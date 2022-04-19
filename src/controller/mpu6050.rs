@@ -194,6 +194,20 @@ where
         self.acc_err.y /= iters as f32;
         Ok(())
     }
+    
+    // Reads acceleration angle (roll & pitch)
+    pub fn read_acc_angle_to_ref(&mut self, dst: &mut F32x2) -> Result<(), Mpu6050Error<E>> {
+        let acc = self.read_acc()?;
+        Self::calc_acc_angle(&acc, &self.acc_err, dst);
+        Ok(())
+    }
+    
+   // Reads acceleration angle (roll & pitch)
+    pub fn read_acc_angle(&mut self) -> Result<F32x2, Mpu6050Error<E>> {
+        let mut ret = f32x2_empty();
+        self.read_acc_angle_to_ref(&mut ret)?;
+        Ok(ret)
+    }
 
     // Reads gyroscopic acceleration (deg/s), accounting for calibrated error
     pub fn read_gyro(&mut self) -> Result<F32x3, Mpu6050Error<E>> {
