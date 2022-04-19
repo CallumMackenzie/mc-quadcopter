@@ -8,7 +8,6 @@ const MILLIS_INCREMENT: u32 = PRESCALER * TIMER_COUNTS / 16000; // 8 ms
 static MILLIS_COUNTER: InterruptMutex<Cell<u32>> = InterruptMutex::new(Cell::new(0));
 
 pub fn millis_init(tc0: arduino_hal::pac::TC0) {
-    // Configure the timer for the above interval (in CTC mode) and enable its interrupt.
     tc0.tccr0a.write(|w| w.wgm0().ctc());
     tc0.ocr0a.write(|w| unsafe { w.bits(TIMER_COUNTS as u8) });
     tc0.tccr0b.write(|w| match PRESCALER {
@@ -20,12 +19,10 @@ pub fn millis_init(tc0: arduino_hal::pac::TC0) {
     });
     tc0.timsk0.write(|w| w.ocie0a().set_bit());
 
-    // Reset the global millisecond counter
     avr_device::interrupt::free(|cs| {
         MILLIS_COUNTER.borrow(cs).set(0);
     });
 
-    // Enable interrupts
     unsafe { avr_device::interrupt::enable() };
 }
 

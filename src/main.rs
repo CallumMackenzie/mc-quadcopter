@@ -3,10 +3,9 @@
 #![feature(abi_avr_interrupt)]
 
 pub mod controller;
-pub mod millis;
 
 use arduino_hal::I2c;
-use controller::inputs::PositionInput;
+use controller::inputs::{millis::millis_init, PositionInput};
 use panic_halt as _;
 use ufmt::uwriteln;
 
@@ -27,11 +26,12 @@ fn main() -> ! {
     ));
 
     pos_input.init().unwrap();
-	pos_input.calibrate().unwrap();
+    pos_input.calibrate().unwrap();
 
     // Begin program loop
     loop {
-		pos_input.update().unwrap();
+        pos_input.read().unwrap();
+        uwriteln!();
         arduino_hal::delay_ms(10);
     }
 }

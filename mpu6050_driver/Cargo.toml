@@ -1,0 +1,13 @@
+[package]
+name = "mpu6050_driver"
+version = "0.1.0"
+authors = ["Callum Mackenzie <alexxander1611@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+ufmt = "0.1.0"
+embedded-hal = "0.2.3"
+
+[dependencies.micromath]
+version = "2.0.0"
+features = ["vector"]

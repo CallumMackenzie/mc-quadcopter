@@ -23,7 +23,7 @@ where
     T: Write<Error = E> + WriteRead<Error = E>,
 {
     pub fn new(i2c: T) -> Self {
-        Self::new(Mpu6050::new(i2c))
+        Self::from_mpu(Mpu6050::new(i2c))
     }
 
     pub fn from_mpu(mpu: Mpu6050<T>) -> Self {
@@ -50,7 +50,7 @@ where
         Ok(())
     }
 
-    pub fn update(&mut self) -> Result<(), Mpu6050Error<E>> {
+    pub fn read(&mut self) -> Result<(), Mpu6050Error<E>> {
         // Retrieve elapsed time
         let now = millis();
         let elapsed_time = (now - self.last_gyro_measurement) as f32 / 1000.0;

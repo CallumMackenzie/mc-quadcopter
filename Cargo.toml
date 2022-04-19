@@ -15,6 +15,7 @@ panic-halt = "0.2.0"
 ufmt = "0.1.0"
 nb = "0.1.2"
 embedded-hal = "0.2.3"
+mpu6050_driver = { path = "mpu6050_driver" }
 avr-device = "0.3.2"
 
 [dependencies.micromath]
