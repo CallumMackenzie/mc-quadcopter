@@ -1,15 +1,14 @@
-use core::cell;
+use avr_device::interrupt::Mutex as InterruptMutex;
+use core::cell::Cell;
 
 const PRESCALER: u32 = 1024;
 const TIMER_COUNTS: u32 = 125;
 const MILLIS_INCREMENT: u32 = PRESCALER * TIMER_COUNTS / 16000; // 8 ms
 
-static MILLIS_COUNTER: avr_device::interrupt::Mutex<cell::Cell<u32>> =
-    avr_device::interrupt::Mutex::new(cell::Cell::new(0));
+static MILLIS_COUNTER: InterruptMutex<Cell<u32>> = InterruptMutex::new(Cell::new(0));
 
 pub fn millis_init(tc0: arduino_hal::pac::TC0) {
-    // Configure the timer for the above interval (in CTC mode)
-    // and enable its interrupt.
+    // Configure the timer for the above interval (in CTC mode) and enable its interrupt.
     tc0.tccr0a.write(|w| w.wgm0().ctc());
     tc0.ocr0a.write(|w| unsafe { w.bits(TIMER_COUNTS as u8) });
     tc0.tccr0b.write(|w| match PRESCALER {
@@ -25,6 +24,9 @@ pub fn millis_init(tc0: arduino_hal::pac::TC0) {
     avr_device::interrupt::free(|cs| {
         MILLIS_COUNTER.borrow(cs).set(0);
     });
+
+    // Enable interrupts
+    unsafe { avr_device::interrupt::enable() };
 }
 
 #[avr_device::interrupt(atmega328p)]

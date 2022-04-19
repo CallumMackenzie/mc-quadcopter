@@ -4,65 +4,27 @@ use micromath::vector::{F32x2, F32x3};
 use micromath::F32Ext;
 use ufmt::derive::uDebug;
 
-const MPU_I2C_ADDR: u8 = 0x68;
-
-fn f32x2_empty() -> F32x2 {
-    F32x2 { x: 0.0, y: 0.0 }
-}
-fn f32x3_empty() -> F32x3 {
-    F32x3 {
-        x: 0.0,
-        y: 0.0,
-        z: 0.0,
-    }
+pub struct Mpu6050<T> {
+    i2c: T,                   // I2c bus driver
+    slave_addr: u8,           // MPU slave addr
+    acc_sensitivity: f32,     // Planar acceleration sensitivity
+    gyro_sensitivity: f32,    // Gyroscope sensitivity
+    pub gyro_err: F32x3,      // Gyroscopic acceleration error offset (degrees/sec)
+    pub acc_angle_err: F32x2, // Planar acceleration angle error offset (g)
 }
 
-#[derive(Debug, uDebug)]
-pub enum Mpu6050Error<T> {
-    I2c(T),
-    InvalidChipId(u8),
-    CouldNotUnhang,
-}
-
-impl<E> From<E> for Mpu6050Error<E> {
-    fn from(e: E) -> Self {
-        Mpu6050Error::I2c(e)
-    }
-}
-
-pub struct Mpu6050<'a, T> {
-    i2c: &'a mut T,        // I2c bus driver
-    slave_addr: u8,        // MPU slave addr
-    acc_sensitivity: f32,  // Planar acceleration sensitivity
-    gyro_sensitivity: f32, // Gyroscope sensitivity
-    pub gyro_err: F32x3,   // Gyroscopic acceleration error offset (degrees/sec)
-    pub acc_err: F32x2,    // Planar acceleration angle error offset (g)
-}
-
-impl<'a, T: 'a> Mpu6050<'a, T> {
-    fn calc_acc_angle_raw(acc: &F32x3, dst: &mut F32x2) {
-        dst.x = (acc.y / (acc.x * acc.x + acc.z * acc.z).sqrt()).atan() * 180.0 / PI;
-        dst.y = (-acc.x / (acc.y * acc.y + acc.z * acc.z).sqrt()).atan() * 180.0 / PI;
-    }
-    fn calc_acc_angle(acc: &F32x3, err: &F32x2, dst: &mut F32x2) {
-        Self::calc_acc_angle_raw(acc, dst);
-        dst.x += err.x;
-        dst.y += err.y;
-    }
-}
-
-impl<'a, T, E> Mpu6050<'a, T>
+impl<T, E> Mpu6050<T>
 where
     T: Write<Error = E> + WriteRead<Error = E>,
 {
-    pub fn new(i2c: &'a mut T) -> Self {
+    pub fn new(i2c: T) -> Self {
         Mpu6050 {
             i2c,
             slave_addr: MPU_I2C_ADDR,
             acc_sensitivity: AccelRange::G2.sensitivity(),
             gyro_sensitivity: GyroRange::D250.sensitivity(),
             gyro_err: f32x3_empty(),
-            acc_err: f32x2_empty(),
+            acc_angle_err: f32x2_empty(),
         }
     }
 
@@ -120,40 +82,6 @@ where
         Ok(())
     }
 
-    // pub fn read_all_positional(&mut self) -> Result<(), Mpu6050Error<E>> {
-    //     // Retrieve elapsed time
-    //     let now = (self.millis)();
-    //     let elapsed_time = (now - self.last_gyro_measurement) as f32 / 1000.0;
-    //     self.last_gyro_measurement = now;
-    //     // Read acceleration
-    //     let mut tmp = f32x3_empty();
-    //     self.read_acc_to_ref(&mut tmp)?;
-    //     self.acc = tmp;
-    //     // Calculate acceleration angle
-    //     let mut tmp = f32x2_empty();
-    //     Self::calc_acc_angle(&self.acc, &self.acc_err, &mut tmp);
-    //     self.acc_angle = tmp;
-
-    //     // Read gyro
-    //     let mut tmp = f32x3_empty();
-    //     self.read_gyro_raw_to_ref(&mut tmp)?;
-    //     self.gyro = tmp;
-    //     self.gyro.x += self.gyro_err.x;
-    //     self.gyro.y += self.gyro_err.y;
-    //     self.gyro.z += self.gyro_err.z;
-    //     // Calculate gyro angles
-    //     self.gyro_angle.x += self.gyro.x * elapsed_time;
-    //     self.gyro_angle.y += self.gyro.x * elapsed_time;
-    //     // Calculate roll, pitch, and yaw
-    //     self.rotation.x =
-    //         self.rotation_filter * self.gyro.x + (1.0 - self.rotation_filter) * self.acc_angle.x; // Roll
-    //     self.rotation.y =
-    //         self.rotation_filter * self.gyro.y + (1.0 - self.rotation_filter) * self.acc_angle.y; // Pitch
-    //     self.rotation.z += self.gyro.z * elapsed_time; // Yaw
-
-    //     Ok(())
-    // }
-
     // Calculates all error offset values. Device should be placed flat and not moving.
     pub fn calculate_all_imu_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         self.calculate_imu_acc_angle_error(iters)?;
@@ -183,26 +111,26 @@ where
     pub fn calculate_imu_acc_angle_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         let mut acc = f32x3_empty();
         let mut tmp = f32x2_empty();
-        self.acc_err = f32x2_empty();
+        self.acc_angle_err = f32x2_empty();
         for _ in 0..iters {
             self.read_acc_to_ref(&mut acc)?;
             Self::calc_acc_angle_raw(&acc, &mut tmp);
-            self.acc_err.x += tmp.x;
-            self.acc_err.y += tmp.y;
+            self.acc_angle_err.x += tmp.x;
+            self.acc_angle_err.y += tmp.y;
         }
-        self.acc_err.x /= iters as f32;
-        self.acc_err.y /= iters as f32;
+        self.acc_angle_err.x /= iters as f32;
+        self.acc_angle_err.y /= iters as f32;
         Ok(())
     }
-    
+
     // Reads acceleration angle (roll & pitch)
     pub fn read_acc_angle_to_ref(&mut self, dst: &mut F32x2) -> Result<(), Mpu6050Error<E>> {
         let acc = self.read_acc()?;
-        Self::calc_acc_angle(&acc, &self.acc_err, dst);
+        Self::calc_acc_angle_to_ref(&acc, &self.acc_angle_err, dst);
         Ok(())
     }
-    
-   // Reads acceleration angle (roll & pitch)
+
+    // Reads acceleration angle (roll & pitch)
     pub fn read_acc_angle(&mut self) -> Result<F32x2, Mpu6050Error<E>> {
         let mut ret = f32x2_empty();
         self.read_acc_angle_to_ref(&mut ret)?;
@@ -247,6 +175,7 @@ where
         self.read_acc_to_ref(&mut ret)?;
         Ok(ret)
     }
+
     // Reads planar acceleration (Gs)
     pub fn read_acc_to_ref(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
         self.read_f32x3(0x3b, dst)?;
@@ -254,6 +183,23 @@ where
         dst.y /= self.acc_sensitivity;
         dst.z /= self.acc_sensitivity;
         Ok(())
+    }
+
+    fn calc_acc_angle_raw(acc: &F32x3, dst: &mut F32x2) {
+        dst.x = (acc.y / (acc.x * acc.x + acc.z * acc.z).sqrt()).atan() * 180.0 / PI;
+        dst.y = (-acc.x / (acc.y * acc.y + acc.z * acc.z).sqrt()).atan() * 180.0 / PI;
+    }
+
+    pub fn calc_acc_angle_to_ref(acc: &F32x3, err: &F32x2, dst: &mut F32x2) {
+        Self::calc_acc_angle_raw(acc, dst);
+        dst.x += err.x;
+        dst.y += err.y;
+    }
+
+    pub fn calc_acc_angle(acc: &F32x3, err: &F32x2) -> F32x2 {
+        let mut ret = f32x2_empty();
+        Self::calc_acc_angle_to_ref(acc, err, &mut ret);
+        ret
     }
 
     fn read_f32x3(&mut self, reg: u8, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
@@ -322,6 +268,20 @@ where
     }
 }
 
+const MPU_I2C_ADDR: u8 = 0x68;
+
+#[derive(Debug, uDebug)]
+pub enum Mpu6050Error<T> {
+    I2c(T),
+    InvalidChipId(u8),
+}
+
+impl<E> From<E> for Mpu6050Error<E> {
+    fn from(e: E) -> Self {
+        Mpu6050Error::I2c(e)
+    }
+}
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum AccelRange {
     G2 = 0,
@@ -357,5 +317,17 @@ impl GyroRange {
             GyroRange::D1000 => 32.8,
             GyroRange::D2000 => 16.4,
         }
+    }
+}
+
+pub fn f32x2_empty() -> F32x2 {
+    F32x2 { x: 0.0, y: 0.0 }
+}
+
+pub fn f32x3_empty() -> F32x3 {
+    F32x3 {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
     }
 }
