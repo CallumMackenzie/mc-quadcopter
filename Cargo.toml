@@ -15,12 +15,17 @@ panic-halt = "0.2.0"
 ufmt = "0.1.0"
 nb = "0.1.2"
 embedded-hal = "0.2.3"
-micromath = "2.0.0"
+avr-device = "0.3.2"
+
+[dependencies.micromath]
+version = "2.0.0"
+features = ["vector"]
 
 [dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"
 rev = "f84c0dff774c2292bc932b670955165161ecc7d1"
-features = ["arduino-nano"]
+# features = ["arduino-nano"] # When changing this, also change .cargo config
+features = ["arduino-uno"]
 
 # Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
