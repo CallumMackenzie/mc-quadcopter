@@ -125,9 +125,9 @@ where
         self.gyro_err = F32x3::filled(0.0);
         for _ in 0..iters {
             self.read_gyro_raw_to_ref(&mut gyro)?;
-			self.gyro_err += gyro;
+            self.gyro_err += gyro;
         }
-		self.gyro_err /= iters as f32;
+        self.gyro_err /= iters as f32;
         Ok(())
     }
 
