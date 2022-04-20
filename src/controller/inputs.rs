@@ -77,7 +77,8 @@ where
         // Calculate gyro angles
         self.gyro_angle += self.gyro_acc * elapsed_time;
         // Calculate roll, pitch, and yaw
-        let (gyro_filter, acc_filter): (f32, f32) = (self.rotation_filter, 1f32 - self.rotation_filter);
+        let (gyro_filter, acc_filter): (f32, f32) =
+            (self.rotation_filter, 1f32 - self.rotation_filter);
         self.rotation.x = self.gyro_angle.x * gyro_filter + self.acc_angle.x * acc_filter; // Roll
         self.rotation.y = self.gyro_angle.y * gyro_filter + self.acc_angle.y * acc_filter; // Pitch
         self.rotation.z = self.gyro_angle.z; // Yaw

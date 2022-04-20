@@ -1,4 +1,5 @@
 #![allow(non_snake_case, non_camel_case_types)]
+
 // Source: https://invensense.tdk.com/wp-content/uploads/2015/02/MPU-6500-Register-Map2.pdf
 
 pub struct BitBlock {
