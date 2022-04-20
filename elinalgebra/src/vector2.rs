@@ -1,19 +1,56 @@
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
+#[derive(Copy, Clone, Debug)]
 pub struct Vector2<T> {
     pub x: T,
     pub y: T,
 }
 
 impl<T> Vector2<T> {
-	pub fn new(x: T, y: T) -> Self {
-		Self { x, y }
-	}
+    pub fn new(x: T, y: T) -> Self {
+        Self { x, y }
+    }
 }
 
 impl<T: Copy> Vector2<T> {
-	pub fn filled(v: T) -> Self {
-		Self::new(v, v)
+    pub fn filled(v: T) -> Self {
+        Self::new(v, v)
+    }
+}
+
+impl<T> DivAssign<f32> for Vector2<T>
+where T: DivAssign<f32>
+{
+	fn div_assign(&mut self, o: f32) {
+		self.x /= o;
+		self.y /= o;
+	}
+}
+
+impl<T> MulAssign<f32> for Vector2<T>
+where T: MulAssign<f32>
+{
+	fn mul_assign(&mut self, o: f32) {
+		self.x *= o;
+		self.y *= o;
+	}
+}
+
+impl<T> AddAssign<f32> for Vector2<T>
+where T: AddAssign<f32>
+{
+	fn add_assign(&mut self, o: f32) {
+		self.x += o;
+		self.y += o;
+	}
+}
+
+impl<T> SubAssign<f32> for Vector2<T>
+where T: SubAssign<f32>
+{
+	fn sub_assign(&mut self, o: f32) {
+		self.x -= o;
+		self.y -= o;
 	}
 }
 

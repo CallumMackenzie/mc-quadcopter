@@ -1,5 +1,6 @@
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
+#[derive(Copy, Clone, Debug)]
 pub struct Vector3<T> {
     pub x: T,
     pub y: T,
@@ -7,14 +8,54 @@ pub struct Vector3<T> {
 }
 
 impl<T> Vector3<T> {
-	pub fn new(x: T, y: T, z: T) -> Self {
-		Self { x, y, z }
-	}
+    pub fn new(x: T, y: T, z: T) -> Self {
+        Self { x, y, z }
+    }
 }
 
 impl<T: Copy> Vector3<T> {
-	pub fn filled(v: T) -> Self {
-		Self::new(v, v, v)
+    pub fn filled(v: T) -> Self {
+        Self::new(v, v, v)
+    }
+}
+
+impl<T> DivAssign<f32> for Vector3<T>
+where T: DivAssign<f32>
+{
+	fn div_assign(&mut self, o: f32) {
+		self.x /= o;
+		self.y /= o;
+		self.z /= o;
+	}
+}
+
+impl<T> MulAssign<f32> for Vector3<T>
+where T: MulAssign<f32>
+{
+	fn mul_assign(&mut self, o: f32) {
+		self.x *= o;
+		self.y *= o;
+		self.z *= o;
+	}
+}
+
+impl<T> AddAssign<f32> for Vector3<T>
+where T: AddAssign<f32>
+{
+	fn add_assign(&mut self, o: f32) {
+		self.x += o;
+		self.y += o;
+		self.z += o;
+	}
+}
+
+impl<T> SubAssign<f32> for Vector3<T>
+where T: SubAssign<f32>
+{
+	fn sub_assign(&mut self, o: f32) {
+		self.x -= o;
+		self.y -= o;
+		self.z -= o;
 	}
 }
 

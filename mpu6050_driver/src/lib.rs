@@ -1,33 +1,40 @@
 #![no_std]
 
 pub mod consts;
-mod utils;
+pub mod utils;
 
 pub use consts::*;
 use core::f32::consts::PI;
+use elinalgebra::{F32x2, F32x3};
 use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Write, WriteRead},
 };
-use elinalgebra::{F32x2, F32x3};
 use micromath::F32Ext;
 use ufmt::derive::uDebug;
 use utils::*;
 
+/// The mpu6050 driver struct
 pub struct Mpu6050<T> {
-    i2c: T,                   // I2c bus driver
-    slave_addr: u8,           // MPU slave addr
-    acc_sensitivity: f32,     // Planar acceleration sensitivity
-    gyro_sensitivity: f32,    // Gyroscope sensitivity
-    pub gyro_err: F32x3,      // Gyroscopic acceleration error offset (degrees/sec)
-    pub acc_angle_err: F32x2, // Planar acceleration angle error offset (g)
+    /// I2c bus driver
+    i2c: T,
+    /// MPU slave addr
+    slave_addr: u8,
+    /// Planar acceleration sensitivity
+    acc_sensitivity: f32,
+    /// Gyroscope sensitivity
+    gyro_sensitivity: f32,
+    /// Gyroscopic acceleration error offset (degrees/sec)
+    pub gyro_err: F32x3,
+    /// Planar acceleration angle error offset (Gs ex. 9.81 m/s per G on earth)
+    pub acc_angle_err: F32x2,
 }
 
 impl<T, E> Mpu6050<T>
 where
     T: Write<Error = E> + WriteRead<Error = E>,
 {
-    // Creates a new mpu driver instance with the given i2c bus driver
+    /// Creates a new mpu driver instance with the given i2c bus driver
     pub fn new(i2c: T) -> Self {
         Mpu6050 {
             i2c,
@@ -39,21 +46,21 @@ where
         }
     }
 
-    // Wakes the mpu
+    /// Wakes the mpu
     pub fn wake<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), Mpu6050Error<E>> {
         self.write_byte(PWR_MGMT_1::ADDR, 0x01)?;
         delay.delay_ms(100);
         Ok(())
     }
 
-    // Resets the mpu
+    /// Resets the mpu
     pub fn reset_device<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), Mpu6050Error<E>> {
         self.write_bit(PWR_MGMT_1::ADDR, PWR_MGMT_1::RESET_BIT, true)?;
         delay.delay_ms(100);
         Ok(())
     }
 
-    // Verifies the integrity of the mpu
+    /// Verifies the integrity of the mpu
     pub fn verify(&mut self) -> Result<(), Mpu6050Error<E>> {
         let addr = self.read_byte(WHO_AM_I::ADDR)?;
         if addr != MPU_ADDR {
@@ -63,7 +70,7 @@ where
         }
     }
 
-    // Initializes the mpu
+    /// Initializes the mpu
     pub fn init<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), Mpu6050Error<E>> {
         self.reset_device(delay)?;
         self.wake(delay)?;
@@ -73,7 +80,7 @@ where
         Ok(())
     }
 
-    // Reads temperature
+    /// Reads temperature from chip
     pub fn read_temp(&mut self) -> Result<f32, Mpu6050Error<E>> {
         const NBYTES: usize = TEMP_OUT::BYTES.len as usize;
         let mut buff: [u8; NBYTES] = [0; NBYTES];
@@ -82,13 +89,13 @@ where
         Ok((raw_tmp / TEMP_SENSITIVITY) + TEMP_OFFSET)
     }
 
-    // Enables or disables temperature measurement
+    /// Enables or disables temperature measurement
     pub fn set_temp_enabled(&mut self, enabled: bool) -> Result<(), Mpu6050Error<E>> {
         self.write_bit(PWR_MGMT_1::ADDR, PWR_MGMT_1::TEMP_DIS_BIT, !enabled)?;
         Ok(())
     }
 
-    // Sets the acceleration measurement range
+    /// Sets the acceleration measurement range
     pub fn set_accel_range(&mut self, range: AccelRange) -> Result<(), Mpu6050Error<E>> {
         const BITS: BitBlock = ACCEL_CONFIG::ACCEL_FS_SEL_BITS;
         self.write_bits(ACCEL_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
@@ -96,7 +103,7 @@ where
         Ok(())
     }
 
-    // Sets the gyro measurement range
+    /// Sets the gyro measurement range
     pub fn set_gyro_range(&mut self, range: GyroRange) -> Result<(), Mpu6050Error<E>> {
         const BITS: BitBlock = GYRO_CONFIG::GYRO_FS_SEL_BITS;
         self.write_bits(GYRO_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
@@ -104,32 +111,28 @@ where
         Ok(())
     }
 
-    // Calculates all error offset values. Device should be placed flat and not moving.
+    /// Calculates all error offset values. Device should be placed flat and not moving.
     pub fn calculate_all_imu_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         self.calculate_imu_acc_angle_error(iters)?;
         self.calculate_imu_gyro_error(iters)?;
         Ok(())
     }
 
-    // Calculates gyroscope error offset values based on current readings.
-    // Device should be placed flat and not be moving.
+    /// Calculates gyroscope error offset values based on current readings.
+    /// Device should be placed flat and not be moving.
     pub fn calculate_imu_gyro_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         let mut gyro = F32x3::filled(0.0);
         self.gyro_err = F32x3::filled(0.0);
         for _ in 0..iters {
             self.read_gyro_raw_to_ref(&mut gyro)?;
-            self.gyro_err.x += gyro.x;
-            self.gyro_err.y += gyro.y;
-            self.gyro_err.z += gyro.z;
+			self.gyro_err += gyro;
         }
-        self.gyro_err.x /= iters as f32;
-        self.gyro_err.y /= iters as f32;
-        self.gyro_err.z /= iters as f32;
+		self.gyro_err /= iters as f32;
         Ok(())
     }
 
-    // Calculates acceleration angle error offset values based on current readings.
-    // Device should be placed flat and not be moving.
+    /// Calculates acceleration angle error offset values based on current readings.
+    /// Device should be placed flat and not be moving.
     pub fn calculate_imu_acc_angle_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         let mut acc = F32x3::filled(0.0);
         let mut tmp = F32x2::filled(0.0);
@@ -137,90 +140,81 @@ where
         for _ in 0..iters {
             self.read_acc_to_ref(&mut acc)?;
             Self::calc_acc_angle_raw(&acc, &mut tmp);
-            self.acc_angle_err.x += tmp.x;
-            self.acc_angle_err.y += tmp.y;
+            self.acc_angle_err += tmp;
         }
-        self.acc_angle_err.x /= iters as f32;
-        self.acc_angle_err.y /= iters as f32;
+        self.acc_angle_err /= iters as f32;
         Ok(())
     }
 
-    // Reads acceleration angle (roll & pitch)
+    /// Reads acceleration angle (roll & pitch) into dst
     pub fn read_acc_angle_to_ref(&mut self, dst: &mut F32x2) -> Result<(), Mpu6050Error<E>> {
         let acc = self.read_acc()?;
         Self::calc_acc_angle_to_ref(&acc, &self.acc_angle_err, dst);
         Ok(())
     }
 
-    // Reads acceleration angle (roll & pitch)
+    /// Reads acceleration angle (roll & pitch)
     pub fn read_acc_angle(&mut self) -> Result<F32x2, Mpu6050Error<E>> {
         let mut ret = F32x2::filled(0.0);
         self.read_acc_angle_to_ref(&mut ret)?;
         Ok(ret)
     }
 
-    // Reads gyroscopic acceleration (deg/s), accounting for calibrated error
+    /// Reads gyroscopic acceleration (deg/s), accounting for calibrated error
     pub fn read_gyro(&mut self) -> Result<F32x3, Mpu6050Error<E>> {
         let mut ret = F32x3::filled(0.0);
         self.read_gyro_to_ref(&mut ret)?;
         Ok(ret)
     }
 
-    // Reads gyroscopic acceleration (deg/s), accounting for calibrated error
+    /// Reads gyroscopic acceleration (deg/s), accounting for calibrated error into dst
     pub fn read_gyro_to_ref(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
         self.read_gyro_raw_to_ref(dst)?;
-        dst.x -= self.gyro_err.x;
-        dst.y -= self.gyro_err.y;
-        dst.z -= self.gyro_err.z;
+        *dst -= self.gyro_err;
         Ok(())
     }
 
-    // Reads gyroscopic acceleration (deg/s)
+    /// Reads gyroscopic acceleration (deg/s)
     pub fn read_gyro_raw(&mut self) -> Result<F32x3, Mpu6050Error<E>> {
         let mut ret = F32x3::filled(0.0);
         self.read_gyro_raw_to_ref(&mut ret)?;
         Ok(ret)
     }
 
-    // Reads gyroscopic acceleration (deg/s)
+    /// Reads gyroscopic acceleration (deg/s) into dst
     pub fn read_gyro_raw_to_ref(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
         self.read_f32x3(GYRO_OUT::ADDR, dst)?;
-        dst.x /= self.gyro_sensitivity;
-        dst.y /= self.gyro_sensitivity;
-        dst.z /= self.gyro_sensitivity;
+        *dst /= self.gyro_sensitivity;
         Ok(())
     }
 
-    // Reads planar acceleration (Gs)
+    /// Reads planar acceleration (Gs)
     pub fn read_acc(&mut self) -> Result<F32x3, Mpu6050Error<E>> {
         let mut ret = F32x3::filled(0.0);
         self.read_acc_to_ref(&mut ret)?;
         Ok(ret)
     }
 
-    // Reads planar acceleration (Gs)
+    /// Reads planar acceleration (Gs) into dst
     pub fn read_acc_to_ref(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
         self.read_f32x3(ACCEL_OUT::ADDR, dst)?;
-        dst.x /= self.acc_sensitivity;
-        dst.y /= self.acc_sensitivity;
-        dst.z /= self.acc_sensitivity;
+        *dst /= self.acc_sensitivity;
         Ok(())
     }
 
-    // Calculates roll & pitch from acceleration data
+    /// Calculates roll & pitch from acceleration data
     fn calc_acc_angle_raw(acc: &F32x3, dst: &mut F32x2) {
         dst.x = (acc.y / (acc.x * acc.x + acc.z * acc.z).sqrt()).atan() * 180.0 / PI;
         dst.y = (-acc.x / (acc.y * acc.y + acc.z * acc.z).sqrt()).atan() * 180.0 / PI;
     }
 
-    // Calculates roll & pitch from acceleration data
+    /// Calculates roll & pitch from acceleration data, storing it in dst
     pub fn calc_acc_angle_to_ref(acc: &F32x3, err: &F32x2, dst: &mut F32x2) {
         Self::calc_acc_angle_raw(acc, dst);
-        dst.x += err.x;
-        dst.y += err.y;
+        dst += err;
     }
 
-    // Calculates roll & pitch from acceleration data
+    /// Calculates & returns roll & pitch from acceleration data
     pub fn calc_acc_angle(acc: &F32x3, err: &F32x2) -> F32x2 {
         let mut ret = F32x2::filled(0.0);
         Self::calc_acc_angle_to_ref(acc, err, &mut ret);
@@ -236,26 +230,26 @@ where
         Ok(())
     }
 
-    // Writes a single byte to mpu
+    /// Writes a single byte to the mpu6050 at the provided register
     pub fn write_byte(&mut self, reg: u8, val: u8) -> Result<(), Mpu6050Error<E>> {
         self.i2c.write(self.slave_addr, &[reg, val])?;
         Ok(())
     }
 
-    // Reads a single byte from mpu
+    /// Reads a single byte from the connected mpu6050 at the register provided
     pub fn read_byte(&mut self, reg: u8) -> Result<u8, Mpu6050Error<E>> {
         let mut byte: [u8; 1] = [0; 1];
         self.i2c.write_read(self.slave_addr, &[reg], &mut byte)?;
         Ok(byte[0])
     }
 
-    // Reades bytes from mpu
+    /// Reades bytes from the connected mpu6050 into buff
     pub fn read_bytes(&mut self, reg: u8, buff: &mut [u8]) -> Result<(), Mpu6050Error<E>> {
         self.i2c.write_read(self.slave_addr, &[reg], buff)?;
         Ok(())
     }
 
-    // Writes bits to mpu
+    /// Writes a series of bits to an mpu6050 register
     pub fn write_bits(
         &mut self,
         reg: u8,
@@ -269,7 +263,7 @@ where
         Ok(())
     }
 
-    // Writes a single bit to mpu
+    /// Writes a single bit to an mpu6050 register
     pub fn write_bit(&mut self, reg: u8, bit: u8, value: bool) -> Result<(), Mpu6050Error<E>> {
         self.write_bits(reg, bit, 1, value as u8)
     }

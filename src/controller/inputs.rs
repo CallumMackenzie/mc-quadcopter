@@ -1,11 +1,10 @@
-
+use arduino_millis_driver::millis;
+use elinalgebra::{F32x2, F32x3};
 use embedded_hal::blocking::{
     delay::DelayMs,
-	i2c::{Write, WriteRead}
+    i2c::{Write, WriteRead},
 };
-use arduino_millis_driver::millis;
 use mpu6050_driver::{Mpu6050, Mpu6050Error};
-use elinalgebra::{F32x2, F32x3};
 use ufmt::derive::uDebug;
 
 pub struct PositionInput<T> {
