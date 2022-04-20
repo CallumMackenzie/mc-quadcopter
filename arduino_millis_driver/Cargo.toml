@@ -12,8 +12,8 @@ avr-device = "0.3.2"
 [dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"
 rev = "f84c0dff774c2292bc932b670955165161ecc7d1"
-###################################################################
-## When changing this, also change .cargo config and /Cargo.toml ##
-###################################################################
+#########################################################
+## WARNING: ENSURE THIS IS SYNCED ACROSS CARGO PROJETS ##
+#########################################################
 # features = ["arduino-nano"]
 features = ["arduino-uno"]

@@ -6,19 +6,11 @@ pub mod controller;
 
 use arduino_hal::I2c;
 use arduino_millis_driver::{millis, millis_init};
+use arduino_utils::upanic;
 use controller::inputs::PositionInput;
 use mpu6050_driver::{AccelRange, GyroRange};
 use panic_halt as _;
 use ufmt::uwriteln;
-
-macro_rules! upanic {
-	($($arg:tt)*) => {
-		{
-		ufmt::uwriteln!($($arg)*).unwrap();
-		loop {}
-		}
-	};
-}
 
 #[arduino_hal::entry]
 fn main() -> ! {
