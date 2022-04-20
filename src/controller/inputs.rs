@@ -1,10 +1,11 @@
-pub mod millis;
-pub mod mpu6050;
 
-use embedded_hal::blocking::i2c::{Write, WriteRead};
-use micromath::vector::{F32x2, F32x3};
-use millis::millis;
-use mpu6050::*;
+use embedded_hal::blocking::{
+    delay::DelayMs,
+	i2c::{Write, WriteRead}
+};
+use arduino_millis_driver::millis;
+use mpu6050_driver::{Mpu6050, Mpu6050Error};
+use elinalgebra::{F32x2, F32x3};
 use ufmt::derive::uDebug;
 
 pub struct PositionInput<T> {
@@ -30,17 +31,17 @@ where
         PositionInput {
             mpu,
             last_gyro_measurement: 0,
-            acc: f32x3_empty(),
-            gyro: f32x3_empty(),
+            acc: F32x3::filled(0.0),
+            gyro: F32x3::filled(0.0),
             rotation_filter: 0.96,
-            rotation: f32x3_empty(),
-            gyro_angle: f32x3_empty(),
-            acc_angle: f32x2_empty(),
+            rotation: F32x3::filled(0.0),
+            gyro_angle: F32x3::filled(0.0),
+            acc_angle: F32x2::filled(0.0),
         }
     }
 
-    pub fn init(&mut self) -> Result<(), PosInputErr<E>> {
-        self.mpu.init()?;
+    pub fn init<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), PosInputErr<E>> {
+        self.mpu.init(delay)?;
         self.last_gyro_measurement = millis();
         Ok(())
     }

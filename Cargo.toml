@@ -15,20 +15,21 @@ panic-halt = "0.2.0"
 ufmt = "0.1.0"
 nb = "0.1.2"
 embedded-hal = "0.2.3"
-mpu6050_driver = { path = "mpu6050_driver" }
 avr-device = "0.3.2"
-
-[dependencies.micromath]
-version = "2.0.0"
-features = ["vector"]
+micromath = "2.0.0"
+elinalgebra = { path = "elinalgebra" }
+mpu6050_driver = { path = "mpu6050_driver" }
+arduino_millis_driver = { path = "arduino_millis_driver" }
 
 [dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"
 rev = "f84c0dff774c2292bc932b670955165161ecc7d1"
-# features = ["arduino-nano"] # When changing this, also change .cargo config
+#########################################################################################
+## When changing this, also change .cargo config and /arduino_millis_driver/Cargo.toml ##
+#########################################################################################
+# features = ["arduino-nano"]
 features = ["arduino-uno"]
 
-# Configure the build for minimal size - AVRs have very little program memory
 [profile.dev]
 panic = "abort"
 lto = true

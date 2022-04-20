@@ -1,3 +1,6 @@
+#![no_std]
+#![feature(abi_avr_interrupt)]
+
 use avr_device::interrupt::Mutex as InterruptMutex;
 use core::cell::Cell;
 

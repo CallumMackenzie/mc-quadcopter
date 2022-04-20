@@ -1,0 +1,19 @@
+[package]
+name = "arduino_millis_driver"
+version = "0.1.0"
+authors = ["Callum Mackenzie <alexxander1611@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+nb = "0.1.2"
+embedded-hal = "0.2.3"
+avr-device = "0.3.2"
+
+[dependencies.arduino-hal]
+git = "https://github.com/rahix/avr-hal"
+rev = "f84c0dff774c2292bc932b670955165161ecc7d1"
+###################################################################
+## When changing this, also change .cargo config and /Cargo.toml ##
+###################################################################
+# features = ["arduino-nano"]
+features = ["arduino-uno"]

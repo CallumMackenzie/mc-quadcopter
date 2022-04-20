@@ -9,12 +9,12 @@ use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Write, WriteRead},
 };
-use micromath::vector::{F32x2, F32x3};
+use elinalgebra::{F32x2, F32x3};
 use micromath::F32Ext;
 use ufmt::derive::uDebug;
 use utils::*;
 
-pub struct Mpu6050<T, 'a> {
+pub struct Mpu6050<T> {
     i2c: T,                   // I2c bus driver
     slave_addr: u8,           // MPU slave addr
     acc_sensitivity: f32,     // Planar acceleration sensitivity
@@ -34,8 +34,8 @@ where
             slave_addr: MPU_ADDR,
             acc_sensitivity: AccelRange::G2.sensitivity(),
             gyro_sensitivity: GyroRange::D250.sensitivity(),
-            gyro_err: f32x3_empty(),
-            acc_angle_err: f32x2_empty(),
+            gyro_err: F32x3::filled(0.0),
+            acc_angle_err: F32x2::filled(0.0),
         }
     }
 
@@ -75,10 +75,10 @@ where
 
     // Reads temperature
     pub fn read_temp(&mut self) -> Result<f32, Mpu6050Error<E>> {
-        const nbytes: u8 = TEMP_OUT::BYTES.len;
-        let mut buff: [u8; nbytes] = [0; nbytes];
+        const NBYTES: usize = TEMP_OUT::BYTES.len as usize;
+        let mut buff: [u8; NBYTES] = [0; NBYTES];
         self.read_bytes(TEMP_OUT::ADDR, &mut buff)?;
-        let raw_tmp = self.read_word_2c(&buff) as f32;
+        let raw_tmp = read_word_2c(&buff) as f32;
         Ok((raw_tmp / TEMP_SENSITIVITY) + TEMP_OFFSET)
     }
 
@@ -90,16 +90,16 @@ where
 
     // Sets the acceleration measurement range
     pub fn set_accel_range(&mut self, range: AccelRange) -> Result<(), Mpu6050Error<E>> {
-        const bits: BitBlock = ACCEL_CONFIG::ACCEL_FS_SEL_BITS;
-        self.write_bits(ACCEL_CONFIG::ADDR, bits.start, bits.len, range as u8)?;
+        const BITS: BitBlock = ACCEL_CONFIG::ACCEL_FS_SEL_BITS;
+        self.write_bits(ACCEL_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
         self.acc_sensitivity = range.sensitivity();
         Ok(())
     }
 
     // Sets the gyro measurement range
     pub fn set_gyro_range(&mut self, range: GyroRange) -> Result<(), Mpu6050Error<E>> {
-        const bits: BitBlock = GYRO_CONFIG::GYRO_FS_SEL_BITS;
-        self.write_bits(GYRO_CONFIG::ADDR, bits.start, bits.len, 2, range as u8)?;
+        const BITS: BitBlock = GYRO_CONFIG::GYRO_FS_SEL_BITS;
+        self.write_bits(GYRO_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
         self.gyro_sensitivity = range.sensitivity();
         Ok(())
     }
@@ -114,8 +114,8 @@ where
     // Calculates gyroscope error offset values based on current readings.
     // Device should be placed flat and not be moving.
     pub fn calculate_imu_gyro_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
-        let mut gyro = f32x3_empty();
-        self.gyro_err = f32x3_empty();
+        let mut gyro = F32x3::filled(0.0);
+        self.gyro_err = F32x3::filled(0.0);
         for _ in 0..iters {
             self.read_gyro_raw_to_ref(&mut gyro)?;
             self.gyro_err.x += gyro.x;
@@ -131,9 +131,9 @@ where
     // Calculates acceleration angle error offset values based on current readings.
     // Device should be placed flat and not be moving.
     pub fn calculate_imu_acc_angle_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
-        let mut acc = f32x3_empty();
-        let mut tmp = f32x2_empty();
-        self.acc_angle_err = f32x2_empty();
+        let mut acc = F32x3::filled(0.0);
+        let mut tmp = F32x2::filled(0.0);
+        self.acc_angle_err = F32x2::filled(0.0);
         for _ in 0..iters {
             self.read_acc_to_ref(&mut acc)?;
             Self::calc_acc_angle_raw(&acc, &mut tmp);
@@ -154,14 +154,14 @@ where
 
     // Reads acceleration angle (roll & pitch)
     pub fn read_acc_angle(&mut self) -> Result<F32x2, Mpu6050Error<E>> {
-        let mut ret = f32x2_empty();
+        let mut ret = F32x2::filled(0.0);
         self.read_acc_angle_to_ref(&mut ret)?;
         Ok(ret)
     }
 
     // Reads gyroscopic acceleration (deg/s), accounting for calibrated error
     pub fn read_gyro(&mut self) -> Result<F32x3, Mpu6050Error<E>> {
-        let mut ret = f32x3_empty();
+        let mut ret = F32x3::filled(0.0);
         self.read_gyro_to_ref(&mut ret)?;
         Ok(ret)
     }
@@ -177,7 +177,7 @@ where
 
     // Reads gyroscopic acceleration (deg/s)
     pub fn read_gyro_raw(&mut self) -> Result<F32x3, Mpu6050Error<E>> {
-        let mut ret = f32x3_empty();
+        let mut ret = F32x3::filled(0.0);
         self.read_gyro_raw_to_ref(&mut ret)?;
         Ok(ret)
     }
@@ -193,7 +193,7 @@ where
 
     // Reads planar acceleration (Gs)
     pub fn read_acc(&mut self) -> Result<F32x3, Mpu6050Error<E>> {
-        let mut ret = f32x3_empty();
+        let mut ret = F32x3::filled(0.0);
         self.read_acc_to_ref(&mut ret)?;
         Ok(ret)
     }
@@ -222,7 +222,7 @@ where
 
     // Calculates roll & pitch from acceleration data
     pub fn calc_acc_angle(acc: &F32x3, err: &F32x2) -> F32x2 {
-        let mut ret = f32x2_empty();
+        let mut ret = F32x2::filled(0.0);
         Self::calc_acc_angle_to_ref(acc, err, &mut ret);
         ret
     }
@@ -230,9 +230,9 @@ where
     fn read_f32x3(&mut self, reg: u8, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
         let mut buf: [u8; 6] = [0; 6];
         self.read_bytes(reg, &mut buf)?;
-        dst.x = self.read_word_2c(&buf[0..2]) as f32;
-        dst.y = self.read_word_2c(&buf[2..4]) as f32;
-        dst.z = self.read_word_2c(&buf[4..6]) as f32;
+        dst.x = read_word_2c(&buf[0..2]) as f32;
+        dst.y = read_word_2c(&buf[2..4]) as f32;
+        dst.z = read_word_2c(&buf[4..6]) as f32;
         Ok(())
     }
 
