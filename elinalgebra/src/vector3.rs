@@ -1,6 +1,7 @@
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+use ufmt::derive::uDebug;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, uDebug)]
 pub struct Vector3<T> {
     pub x: T,
     pub y: T,
@@ -19,44 +20,61 @@ impl<T: Copy> Vector3<T> {
     }
 }
 
-impl<T> DivAssign<f32> for Vector3<T>
-where T: DivAssign<f32>
+impl<T> Mul<f32> for Vector3<T>
+where T: Mul<f32, Output = T>
 {
-	fn div_assign(&mut self, o: f32) {
-		self.x /= o;
-		self.y /= o;
-		self.z /= o;
+	type Output = Self;
+	fn mul(self, o: f32) -> Self::Output {
+		Self {
+			x: self.x * o,
+			y: self.y * o,
+			z: self.z * o,
+		}
 	}
+}
+
+impl<T> DivAssign<f32> for Vector3<T>
+where
+    T: DivAssign<f32>,
+{
+    fn div_assign(&mut self, o: f32) {
+        self.x /= o;
+        self.y /= o;
+        self.z /= o;
+    }
 }
 
 impl<T> MulAssign<f32> for Vector3<T>
-where T: MulAssign<f32>
+where
+    T: MulAssign<f32>,
 {
-	fn mul_assign(&mut self, o: f32) {
-		self.x *= o;
-		self.y *= o;
-		self.z *= o;
-	}
+    fn mul_assign(&mut self, o: f32) {
+        self.x *= o;
+        self.y *= o;
+        self.z *= o;
+    }
 }
 
 impl<T> AddAssign<f32> for Vector3<T>
-where T: AddAssign<f32>
+where
+    T: AddAssign<f32>,
 {
-	fn add_assign(&mut self, o: f32) {
-		self.x += o;
-		self.y += o;
-		self.z += o;
-	}
+    fn add_assign(&mut self, o: f32) {
+        self.x += o;
+        self.y += o;
+        self.z += o;
+    }
 }
 
 impl<T> SubAssign<f32> for Vector3<T>
-where T: SubAssign<f32>
+where
+    T: SubAssign<f32>,
 {
-	fn sub_assign(&mut self, o: f32) {
-		self.x -= o;
-		self.y -= o;
-		self.z -= o;
-	}
+    fn sub_assign(&mut self, o: f32) {
+        self.x -= o;
+        self.y -= o;
+        self.z -= o;
+    }
 }
 
 impl<T> Add for Vector3<T>

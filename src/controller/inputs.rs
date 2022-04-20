@@ -8,14 +8,23 @@ use mpu6050_driver::{Mpu6050, Mpu6050Error};
 use ufmt::derive::uDebug;
 
 pub struct PositionInput<T> {
-    pub mpu: Mpu6050<T>,            // The mpu6050 inertial measurement driver
-    pub last_gyro_measurement: u32, // Last measurement time (in ms since start of program)
-    pub acc: F32x3,                 // Planar acceleration in Gs (9.81 m\s)
-    pub gyro: F32x3, // Gyroscopic acceleration in degrees per second (roll, pitch, yaw)
-    pub rotation_filter: f32, // Filter for combining rotation from gyroscope and rotation derived from acceleration
-    pub rotation: F32x3,      // Current rotation in degrees (roll, pitch, yaw)
-    gyro_angle: F32x3,        // Raw gyroscopic angle (roll, pitch, yaw)
-    acc_angle: F32x2,         // Raw acceleration angle (roll, pitch)
+    /// The mpu6050 inertial measurement driver
+    pub mpu: Mpu6050<T>,
+    /// Last measurement time (in ms since start of program)
+    pub last_gyro_measurement: u32,
+    /// Planar acceleration in Gs (9.81 m\s)
+    pub acc: F32x3,
+    /// Gyroscopic acceleration in degrees per second (roll, pitch, yaw)
+    pub gyro_acc: F32x3,
+    /// Filter for combining rotation from gyroscope and rotation derived from acceleration.
+    /// Must be between 0 and 1 (inclusive).
+    pub rotation_filter: f32,
+    /// Current rotation in degrees (roll, pitch, yaw)
+    pub rotation: F32x3,
+    /// Raw gyroscopic acceleration angle (roll, pitch, yaw)
+    pub gyro_angle: F32x3,
+    /// Raw acceleration-derived gyroscopic angle (roll, pitch)
+    pub acc_angle: F32x2,
 }
 
 impl<T, E> PositionInput<T>
@@ -31,9 +40,9 @@ where
             mpu,
             last_gyro_measurement: 0,
             acc: F32x3::filled(0.0),
-            gyro: F32x3::filled(0.0),
+            gyro_acc: F32x3::filled(0.0),
             rotation_filter: 0.96,
-            rotation: F32x3::filled(0.0),
+            rotation: F32x3::filled(1.0),
             gyro_angle: F32x3::filled(0.0),
             acc_angle: F32x2::filled(0.0),
         }
@@ -46,7 +55,10 @@ where
     }
 
     pub fn calibrate(&mut self) -> Result<(), PosInputErr<E>> {
+        self.gyro_angle = F32x3::filled(0.0);
+        self.acc_angle = F32x2::filled(0.0);
         self.mpu.calculate_all_imu_error(150)?;
+        self.last_gyro_measurement = millis();
         Ok(())
     }
 
@@ -61,19 +73,14 @@ where
         self.acc_angle = Mpu6050::<T>::calc_acc_angle(&self.acc, &self.mpu.acc_angle_err);
 
         // Read gyro
-        self.gyro = self.mpu.read_gyro()?;
+        self.gyro_acc = self.mpu.read_gyro()?;
         // Calculate gyro angles
-        self.gyro_angle.x += self.gyro.x * elapsed_time;
-        self.gyro_angle.y += self.gyro.x * elapsed_time;
-        self.gyro_angle.z += self.gyro.z * elapsed_time;
+        self.gyro_angle += self.gyro_acc * elapsed_time;
         // Calculate roll, pitch, and yaw
-        self.rotation.x =
-            self.rotation_filter * self.gyro.x + (1.0 - self.rotation_filter) * self.acc_angle.x; // Roll
-        self.rotation.y =
-            self.rotation_filter * self.gyro.y + (1.0 - self.rotation_filter) * self.acc_angle.y; // Pitch
-        self.rotation.z += self.gyro.z * elapsed_time; // Yaw
-
-        // We're done
+        let (gyro_filter, acc_filter): (f32, f32) = (self.rotation_filter, 1f32 - self.rotation_filter);
+        self.rotation.x = self.gyro_angle.x * gyro_filter + self.acc_angle.x * acc_filter; // Roll
+        self.rotation.y = self.gyro_angle.y * gyro_filter + self.acc_angle.y * acc_filter; // Pitch
+        self.rotation.z = self.gyro_angle.z; // Yaw
         Ok(())
     }
 }

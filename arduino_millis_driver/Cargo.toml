@@ -5,7 +5,7 @@ authors = ["Callum Mackenzie <alexxander1611@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-nb = "0.1.2"
+ufmt = "0.1.0"
 embedded-hal = "0.2.3"
 avr-device = "0.3.2"
 

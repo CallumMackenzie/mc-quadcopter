@@ -16,21 +16,13 @@ pub const MPU_ADDR: u8 = 0x68;
 pub const TEMP_OFFSET: f32 = 36.53;
 pub const TEMP_SENSITIVITY: f32 = 340.0;
 
-pub struct CONFIG;
-impl CONFIG {
-    pub const ADDR: u8 = 0x1a;
-    pub const FIFO_MODE_BIT: u8 = 6;
-    pub const EXT_SYNC_SET_BITS: BitBlock = BitBlock { start: 3, len: 3 };
-    pub const DLPF_CFG_BITS: BitBlock = BitBlock { start: 0, len: 3 };
-}
-
 pub struct GYRO_CONFIG;
 impl GYRO_CONFIG {
     pub const ADDR: u8 = 0x1b;
     pub const XG_ST_BIT: u8 = 7;
     pub const YG_ST_BIT: u8 = 6;
     pub const ZG_ST_BIT: u8 = 5;
-    pub const GYRO_FS_SEL_BITS: BitBlock = BitBlock { start: 3, len: 2 };
+    pub const GYRO_FS_SEL_BITS: BitBlock = BitBlock { start: 4, len: 2 };
     pub const FCHOICE_B_BITS: BitBlock = BitBlock { start: 0, len: 2 };
 }
 
@@ -40,7 +32,7 @@ impl ACCEL_CONFIG {
     pub const XA_ST_BIT: u8 = 7;
     pub const YA_ST_BIT: u8 = 6;
     pub const ZA_ST_BIT: u8 = 5;
-    pub const ACCEL_FS_SEL_BITS: BitBlock = BitBlock { start: 3, len: 2 };
+    pub const ACCEL_FS_SEL_BITS: BitBlock = BitBlock { start: 4, len: 2 };
 }
 
 pub struct PWR_MGMT_1;
@@ -52,6 +44,14 @@ impl PWR_MGMT_1 {
     pub const GYRO_STANDBY_BIT: u8 = 4;
     pub const TEMP_DIS_BIT: u8 = 3;
     pub const CLKSEL_BITS: BitBlock = BitBlock { start: 0, len: 3 };
+}
+
+pub struct CONFIG;
+impl CONFIG {
+    pub const ADDR: u8 = 0x1a;
+    pub const FIFO_MODE_BIT: u8 = 6;
+    pub const EXT_SYNC_SET_BITS: BitBlock = BitBlock { start: 3, len: 3 };
+    pub const DLPF_CFG_BITS: BitBlock = BitBlock { start: 0, len: 3 };
 }
 
 pub struct PWR_MGMT_2;
