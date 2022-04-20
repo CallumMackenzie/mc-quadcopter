@@ -211,7 +211,7 @@ where
     /// Calculates roll & pitch from acceleration data, storing it in dst
     pub fn calc_acc_angle_to_ref(acc: &F32x3, err: &F32x2, dst: &mut F32x2) {
         Self::calc_acc_angle_raw(acc, dst);
-        dst += err;
+        *dst += *err;
     }
 
     /// Calculates & returns roll & pitch from acceleration data
