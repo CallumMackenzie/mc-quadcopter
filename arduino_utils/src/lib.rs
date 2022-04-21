@@ -11,3 +11,10 @@ macro_rules! upanic {
 		}
 	};
 }
+
+#[macro_export]
+macro_rules! uprint {
+	($($arg:tt)*) => {
+		ufmt::uwriteln!($($arg)*).unwrap();
+	};
+}
