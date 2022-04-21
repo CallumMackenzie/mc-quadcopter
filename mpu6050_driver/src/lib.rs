@@ -26,8 +26,10 @@ pub struct Mpu6050<T> {
     gyro_sensitivity: f32,
     /// Gyroscopic acceleration error offset (degrees/sec)
     pub gyro_err: F32x3,
-    /// Planar acceleration angle error offset (Gs ex. 9.81 m/s per G on earth)
+    /// Planar acceleration angle error offset (degrees/sec)
     pub acc_angle_err: F32x2,
+	/// Planar acceleration error offset (Gs)
+	pub acc_err: F32x3,
 }
 
 impl<T, E> Mpu6050<T>
@@ -43,6 +45,7 @@ where
             gyro_sensitivity: GyroRange::D250.sensitivity(),
             gyro_err: F32x3::filled(0.0),
             acc_angle_err: F32x2::filled(0.0),
+			acc_err: F32x3::filled(0.0)
         }
     }
 
@@ -115,6 +118,7 @@ where
     pub fn calculate_all_imu_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         self.calculate_imu_acc_angle_error(iters)?;
         self.calculate_imu_gyro_error(iters)?;
+		self.calculate_imu_acc_error(iters)?;
         Ok(())
     }
 
@@ -138,13 +142,26 @@ where
         let mut tmp = F32x2::filled(0.0);
         self.acc_angle_err = F32x2::filled(0.0);
         for _ in 0..iters {
-            self.read_acc_to_ref(&mut acc)?;
+            self.read_acc_to_ref_raw(&mut acc)?;
             Self::calc_acc_angle_raw(&acc, &mut tmp);
             self.acc_angle_err += tmp;
         }
         self.acc_angle_err /= iters as f32;
         Ok(())
     }
+
+	/// Calculates acceleration error offset values based on current readings.
+	/// Device should be placed flat and not moving.
+	pub fn calculate_imu_acc_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
+        let mut acc = F32x3::filled(0.0);
+        self.acc_err = F32x3::filled(0.0);
+        for _ in 0..iters {
+            self.read_acc_to_ref_raw(&mut acc)?;
+			self.acc_err += acc;
+        }
+        self.acc_err /= iters as f32;
+        Ok(())
+	}
 
     /// Reads acceleration angle (roll & pitch) into dst
     pub fn read_acc_angle_to_ref(&mut self, dst: &mut F32x2) -> Result<(), Mpu6050Error<E>> {
@@ -197,10 +214,16 @@ where
 
     /// Reads planar acceleration (Gs) into dst
     pub fn read_acc_to_ref(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
-        self.read_f32x3(ACCEL_OUT::ADDR, dst)?;
-        *dst /= self.acc_sensitivity;
+		self.read_acc_to_ref_raw(dst)?;
+		*dst -= self.acc_err;
         Ok(())
     }
+
+	fn read_acc_to_ref_raw(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
+        self.read_f32x3(ACCEL_OUT::ADDR, dst)?;
+        *dst /= self.acc_sensitivity;
+		Ok(())
+	}
 
     /// Calculates roll & pitch from acceleration data
     fn calc_acc_angle_raw(acc: &F32x3, dst: &mut F32x2) {

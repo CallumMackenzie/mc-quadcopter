@@ -5,10 +5,10 @@
 pub mod controller;
 
 use arduino_hal::I2c;
-use arduino_millis_driver::millis_init;
-use arduino_utils::{upanic, uprint};
+use arduino_millis_driver::*;
+use arduino_utils::*;
 use controller::model::*;
-use mpu6050_driver::{AccelRange, GyroRange};
+use elinalgebra::*;
 use panic_halt as _;
 
 #[arduino_hal::entry]
@@ -44,15 +44,13 @@ fn main() -> ! {
         pos_input
             .read(&mut pos_data)
             .unwrap_or_else(|_| upanic!(&mut serial, "Positional read failed"));
-        let a = pos_data.gyro_acc;
+
         uprint!(
             &mut serial,
-            "{}, {}, {}",
-            a.x as i32,
-            a.y as i32,
-            a.z as i32,
+            "acc: {}, {}, {} ",
+            pos_data.gyro_angle.x as i32,
+            pos_data.gyro_angle.y as i32,
+            pos_data.gyro_angle.z as i32,
         );
-
-        arduino_hal::delay_ms(5);
     }
 }
