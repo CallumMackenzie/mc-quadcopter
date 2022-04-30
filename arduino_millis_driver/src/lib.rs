@@ -1,6 +1,8 @@
 #![no_std]
 #![feature(abi_avr_interrupt)]
 
+//! A crate to bring the millis() method to arduino embedded systems.
+
 use avr_device::interrupt::Mutex as InterruptMutex;
 use core::cell::Cell;
 use ufmt::derive::uDebug;

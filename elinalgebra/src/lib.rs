@@ -1,5 +1,7 @@
 #![no_std]
 
+//! A platform-agnostic linear algebra library focused on embedded enviornments.
+
 mod utils;
 mod vector2;
 mod vector3;

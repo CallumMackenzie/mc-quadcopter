@@ -1,6 +1,54 @@
 #![no_std]
 
+//! This crate provides a platform-agnostic driver for the MPU6050 inertial measurement unit.
+//! Features include reading planar acceleration, gyroscopic acceleration, gyroscopic value,
+//! and chip temperature.
+//!
+//! # Example
+//!
+//! Use the Mpu6050 with the arduino uno.
+//!
+//! ```rust
+//! use arduino_hal::I2c;
+//! use panic_halt as _;
+//! use mpu6050_driver::{Mpu6050, Mpu6050Error};
+//!
+//! #[arduino_hal::entry]
+//! fn main() -> ! {
+//!     // Retrieve resources
+//!     let dp = arduino_hal::Peripherals::take().unwrap();
+//!     let pins = arduino_hal::pins!(dp);
+//!     let mut delay = arduino_hal::Delay::new();
+//!
+//! 	// Construct mpu
+//!     let mut mpu = Mpu6050::new(I2c::new(
+//!         dp.TWI,
+//!         pins.a4.into_pull_up_input(),
+//!         pins.a5.into_pull_up_input(),
+//!         50000,
+//!     ));
+//!
+//! 	// Initialize mpu
+//! 	mpu.init(&mut delay).unwrap();
+//!
+//!     // Begin program loop
+//!     loop {
+//! 		// Read planar acceleration
+//!         let planar_acc = mpu.read_acc().unwrap();
+//!
+//! 		// Read gyroscopic acceleration
+//!         let gryo_acc = mpu.read_gyro().unwrap();
+//!
+//! 		// Read chip temperature
+//! 		let temp = mpu.read_temp().unwrap();
+//!     }
+//! }
+//!
+//! ```
+
+/// Constants for MPU6050 addresses & values
 pub mod consts;
+/// Utils generally for manipulating bits
 pub mod utils;
 
 pub use consts::*;
@@ -28,8 +76,8 @@ pub struct Mpu6050<T> {
     pub gyro_err: F32x3,
     /// Planar acceleration angle error offset (degrees/sec)
     pub acc_angle_err: F32x2,
-	/// Planar acceleration error offset (Gs)
-	pub acc_err: F32x3,
+    /// Planar acceleration error offset (Gs)
+    pub acc_err: F32x3,
 }
 
 impl<T, E> Mpu6050<T>
@@ -45,7 +93,7 @@ where
             gyro_sensitivity: GyroRange::D250.sensitivity(),
             gyro_err: F32x3::filled(0.0),
             acc_angle_err: F32x2::filled(0.0),
-			acc_err: F32x3::filled(0.0)
+            acc_err: F32x3::filled(0.0),
         }
     }
 
@@ -118,7 +166,7 @@ where
     pub fn calculate_all_imu_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         self.calculate_imu_acc_angle_error(iters)?;
         self.calculate_imu_gyro_error(iters)?;
-		self.calculate_imu_acc_error(iters)?;
+        self.calculate_imu_acc_error(iters)?;
         Ok(())
     }
 
@@ -150,18 +198,18 @@ where
         Ok(())
     }
 
-	/// Calculates acceleration error offset values based on current readings.
-	/// Device should be placed flat and not moving.
-	pub fn calculate_imu_acc_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
+    /// Calculates acceleration error offset values based on current readings.
+    /// Device should be placed flat and not moving.
+    pub fn calculate_imu_acc_error(&mut self, iters: i32) -> Result<(), Mpu6050Error<E>> {
         let mut acc = F32x3::filled(0.0);
         self.acc_err = F32x3::filled(0.0);
         for _ in 0..iters {
             self.read_acc_to_ref_raw(&mut acc)?;
-			self.acc_err += acc;
+            self.acc_err += acc;
         }
         self.acc_err /= iters as f32;
         Ok(())
-	}
+    }
 
     /// Reads acceleration angle (roll & pitch) into dst
     pub fn read_acc_angle_to_ref(&mut self, dst: &mut F32x2) -> Result<(), Mpu6050Error<E>> {
@@ -214,16 +262,16 @@ where
 
     /// Reads planar acceleration (Gs) into dst
     pub fn read_acc_to_ref(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
-		self.read_acc_to_ref_raw(dst)?;
-		*dst -= self.acc_err;
+        self.read_acc_to_ref_raw(dst)?;
+        *dst -= self.acc_err;
         Ok(())
     }
 
-	fn read_acc_to_ref_raw(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
+    fn read_acc_to_ref_raw(&mut self, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
         self.read_f32x3(ACCEL_OUT::ADDR, dst)?;
         *dst /= self.acc_sensitivity;
-		Ok(())
-	}
+        Ok(())
+    }
 
     /// Calculates roll & pitch from acceleration data
     fn calc_acc_angle_raw(acc: &F32x3, dst: &mut F32x2) {

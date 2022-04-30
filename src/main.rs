@@ -19,8 +19,7 @@ fn main() -> ! {
     let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
     let mut delay = arduino_hal::Delay::new();
 
-    millis_init(dp.TC0)
-        .unwrap_or_else(|e| upanic!(&mut serial, "Could not initialize millis: {}", e as u8));
+    millis_init(dp.TC0).unwrap();
 
     let mut pos_input = MpuPositionInput::new(I2c::new(
         dp.TWI,
@@ -28,9 +27,7 @@ fn main() -> ! {
         pins.a5.into_pull_up_input(),
         50000,
     ));
-    pos_input
-        .init(&mut delay)
-        .unwrap_or_else(|_| upanic!(&mut serial, "Mpu init failed"));
+    pos_input.init(&mut delay).unwrap();
 
     pos_input
         .calibrate()

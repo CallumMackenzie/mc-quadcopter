@@ -17,6 +17,7 @@ nb = "0.1.2"
 embedded-hal = "0.2.3"
 avr-device = "0.3.2"
 micromath = "2.0.0"
+nrf24_driver = { path = "nrf24_driver" } 
 arduino_utils = { path = "arduino_utils" }
 elinalgebra = { path = "elinalgebra" }
 mpu6050_driver = { path = "mpu6050_driver" }
