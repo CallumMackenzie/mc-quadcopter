@@ -11,7 +11,7 @@ avr-device = "0.3.2"
 
 [dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"
-rev = "f84c0dff774c2292bc932b670955165161ecc7d1"
+rev = "392a32b770679cd216e7586d86a3c8ca252e6f64"
 #########################################################
 ## WARNING: ENSURE THIS IS SYNCED ACROSS CARGO PROJETS ##
 #########################################################
