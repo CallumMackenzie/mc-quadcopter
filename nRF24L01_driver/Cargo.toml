@@ -1,0 +1,8 @@
+[package]
+name = "nRF24L01_driver"
+version = "0.1.0"
+authors = ["Callum Mackenzie <alexxander1611@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+nrf24-rs = "0.1"
