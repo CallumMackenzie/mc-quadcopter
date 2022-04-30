@@ -77,7 +77,6 @@ fn radio_test() -> ! {
         mode: SPI_MODE,
     };
     let (spi, ncs) = spi::Spi::new(dp.SPI, sck, mosi, miso, ss, settings);
-	// let wcs = WrappedChipSelectPin(ncs);
 
     let message = b"Test!";
 
