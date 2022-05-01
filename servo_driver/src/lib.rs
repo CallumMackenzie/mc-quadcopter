@@ -1,6 +1,8 @@
 #![no_std]
 
 //! Servo driver interfaces for the arduino uno
+//! See [this site](https://www.arduino.cc/en/pmwiki.php?n=Tutorial/SecretsOfArduinoPWM) for info on 
+//! implementation.
 
 use arduino_hal::port::{mode::Output, Pin};
 use atmega_hal::{
@@ -16,6 +18,7 @@ pub trait ServoDriver {
     fn set_angle(&mut self, angle: f32);
 }
 
+/// Delegate for setting the duty of a PWM pin
 pub trait ServoDriverDelegate {
     /// Set raw duty
     fn set_duty(&mut self, duty: u8);
@@ -23,30 +26,11 @@ pub trait ServoDriverDelegate {
 
 const TRAXXAS_DUTY_RANGE: [f32; 2] = [15f32, 32f32];
 
+/// Servo driver for the Traxxas 2080 servo
 #[allow(dead_code)]
 pub struct Traxxas2080Servo<PIN: PinOps, TIMER> {
     pin: Pin<Output, PIN>,
     tc: *mut TIMER,
-}
-
-impl Traxxas2080Servo<PD3, TC2> {
-    pub fn pd3(tc2: &RefCell<TC2>, pin: Pin<Output, PD3>) -> Self {
-        enable_pwm_3_11(tc2.as_ptr());
-        Self {
-            pin: pin,
-            tc: tc2.as_ptr(),
-        }
-    }
-}
-
-impl Traxxas2080Servo<PB3, TC2> {
-    pub fn pb3(tc2: &RefCell<TC2>, pin: Pin<Output, PB3>) -> Self {
-        enable_pwm_3_11(tc2.as_ptr());
-        Self {
-            pin: pin,
-            tc: tc2.as_ptr(),
-        }
-    }
 }
 
 impl<PIN: PinOps, TIMER> ServoDriver for Traxxas2080Servo<PIN, TIMER>
@@ -65,23 +49,37 @@ where
     }
 }
 
+// Pin D3
+impl Traxxas2080Servo<PD3, TC2> {
+    pub fn pd3(tc2: &RefCell<TC2>, pin: Pin<Output, PD3>) -> Self {
+        enable_pwm_tc2(tc2.as_ptr());
+        Self { pin, tc: tc2.as_ptr() }
+    }
+}
+
+// Pin D11
+impl Traxxas2080Servo<PB3, TC2> {
+    pub fn pb3(tc2: &RefCell<TC2>, pin: Pin<Output, PB3>) -> Self {
+        enable_pwm_tc2(tc2.as_ptr());
+        Self { pin, tc: tc2.as_ptr() }
+    }
+}
+
+// Pin D3
 impl ServoDriverDelegate for Traxxas2080Servo<PD3, TC2> {
     fn set_duty(&mut self, duty: u8) {
-        unsafe {
-            (*(self.tc)).ocr2b.write(|w| w.bits(duty));
-        }
+        unsafe { (*(self.tc)).ocr2b.write(|w| w.bits(duty)) }
     }
 }
 
+// Pin D11
 impl ServoDriverDelegate for Traxxas2080Servo<PB3, TC2> {
     fn set_duty(&mut self, duty: u8) {
-        unsafe {
-            (*(self.tc)).ocr2a.write(|w| w.bits(duty));
-        }
+        unsafe { (*(self.tc)).ocr2a.write(|w| w.bits(duty)) }
     }
 }
 
-fn enable_pwm_3_11(tc2: *mut TC2) {
+fn enable_pwm_tc2(tc2: *mut TC2) {
     unsafe {
         (*tc2).tccr2a.write(|w| {
             w.wgm2()
