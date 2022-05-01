@@ -9,7 +9,8 @@ use panic_halt as _;
 
 #[arduino_hal::entry]
 fn main() -> ! {
-    mpu_test();
+    // mpu_test();
+    servo_test();
 }
 
 fn mpu_test() -> ! {
@@ -52,6 +53,38 @@ fn mpu_test() -> ! {
     }
 }
 
+fn servo_test() -> ! {
+    let dp = arduino_hal::Peripherals::take().unwrap();
+    let pins = arduino_hal::pins!(dp);
+    let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
+
+    pins.d3.into_output();
+    let tc2 = dp.TC2;
+	// Set up PWM
+    tc2.tccr2a.write(|w| {
+        w.wgm2()
+            .pwm_fast()
+            .com2a()
+            .match_clear()
+            .com2b()
+            .match_clear()
+    });
+    tc2.tccr2b.write(|w| w.cs2().prescale_1024());
+
+    loop {
+        let duty = 23u8;
+        tc2.ocr2a.write(|w| unsafe { w.bits(duty) });
+        tc2.ocr2b.write(|w| unsafe { w.bits(duty) });
+        uprint!(&mut serial, "2000");
+        arduino_hal::delay_ms(1000);
+        let duty = 0u8;
+        tc2.ocr2a.write(|w| unsafe { w.bits(duty) });
+        tc2.ocr2b.write(|w| unsafe { w.bits(duty) });
+        uprint!(&mut serial, "1000");
+        arduino_hal::delay_ms(1000);
+    }
+}
+
 fn radio_test() -> ! {
     use arduino_hal::spi;
     use nrf24_rs::{
@@ -65,7 +98,7 @@ fn radio_test() -> ! {
     let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
     let mut delay = arduino_hal::Delay::new();
 
-	let ce = pins.d7.into_output(); // Chip enable
+    let ce = pins.d7.into_output(); // Chip enable
     let ss = pins.d10.into_output(); // Exchange ss for cs
     let sck = pins.d13.into_output(); // Serial clock
     let mosi = pins.d11.into_output();
