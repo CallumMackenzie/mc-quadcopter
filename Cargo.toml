@@ -19,6 +19,7 @@ avr-device = "0.3.2"
 micromath = "2.0.0"
 nrf24-rs = "0.1"
 nrf24_driver = { path = "nrf24_driver" } 
+servo_driver = { path = "servo_driver" }
 arduino_utils = { path = "arduino_utils" }
 elinalgebra = { path = "elinalgebra" }
 mpu6050_driver = { path = "mpu6050_driver" }

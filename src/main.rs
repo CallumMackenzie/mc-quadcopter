@@ -54,34 +54,24 @@ fn mpu_test() -> ! {
 }
 
 fn servo_test() -> ! {
+	use servo_driver::{Traxxas2080Servo, ServoDriver};
+	use core::cell::RefCell;
+
     let dp = arduino_hal::Peripherals::take().unwrap();
     let pins = arduino_hal::pins!(dp);
     let mut serial = arduino_hal::default_serial!(dp, pins, 57600);
 
-    pins.d3.into_output();
-    let tc2 = dp.TC2;
-	// Set up PWM
-    tc2.tccr2a.write(|w| {
-        w.wgm2()
-            .pwm_fast()
-            .com2a()
-            .match_clear()
-            .com2b()
-            .match_clear()
-    });
-    tc2.tccr2b.write(|w| w.cs2().prescale_1024());
+	let tc2_rc = RefCell::new(dp.TC2);
+	let mut servo_1 = Traxxas2080Servo::pd3(&tc2_rc, pins.d3.into_output());
+	let mut servo_2 = Traxxas2080Servo::pb3(&tc2_rc, pins.d11.into_output());
 
     loop {
-        let duty = 23u8;
-        tc2.ocr2a.write(|w| unsafe { w.bits(duty) });
-        tc2.ocr2b.write(|w| unsafe { w.bits(duty) });
-        uprint!(&mut serial, "2000");
-        arduino_hal::delay_ms(1000);
-        let duty = 0u8;
-        tc2.ocr2a.write(|w| unsafe { w.bits(duty) });
-        tc2.ocr2b.write(|w| unsafe { w.bits(duty) });
-        uprint!(&mut serial, "1000");
-        arduino_hal::delay_ms(1000);
+		for angle in [0f32, 45f32, -45f32].iter() {
+			servo_1.set_angle(*angle);
+			servo_2.set_angle(-*angle);
+			uprint!(&mut serial, "Angle: {}", *angle as i32);
+			arduino_hal::delay_ms(1000);
+		}
     }
 }
 
