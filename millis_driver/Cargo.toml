@@ -1,5 +1,5 @@
 [package]
-name = "arduino_millis_driver"
+name = "millis_driver"
 version = "0.1.0"
 authors = ["Callum Mackenzie <alexxander1611@gmail.com>"]
 edition = "2018"

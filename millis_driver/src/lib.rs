@@ -22,14 +22,19 @@ pub enum MillisErr {
     AlreadyInitialized = 1,
 }
 
+pub fn millis_initialized() -> bool {
+	avr_device::interrupt::free(|cs| MILLIS_INITIALIZED.borrow(cs).get())
+}
+
 fn ensure_millis_uninit() -> Result<(), MillisErr> {
-    if avr_device::interrupt::free(|cs| MILLIS_INITIALIZED.borrow(cs).get()) {
+    if millis_initialized() {
         Err(MillisErr::AlreadyInitialized)
     } else {
         Ok(())
     }
 }
 
+/// Initialize the millis driver to always return the value provided
 pub fn millis_init_debug(millis: u32) -> Result<(), MillisErr> {
     ensure_millis_uninit()?;
     avr_device::interrupt::free(|cs| {
@@ -39,6 +44,7 @@ pub fn millis_init_debug(millis: u32) -> Result<(), MillisErr> {
     Ok(())
 }
 
+/// Initialize the millis driver
 pub fn millis_init(tc0: arduino_hal::pac::TC0) -> Result<(), MillisErr> {
     ensure_millis_uninit()?;
     tc0.tccr0a.write(|w| w.wgm0().ctc());

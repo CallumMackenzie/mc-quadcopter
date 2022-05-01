@@ -23,7 +23,7 @@ servo_driver = { path = "servo_driver" }
 arduino_utils = { path = "arduino_utils" }
 elinalgebra = { path = "elinalgebra" }
 mpu6050_driver = { path = "mpu6050_driver" }
-arduino_millis_driver = { path = "arduino_millis_driver" }
+millis_driver = { path = "millis_driver" }
 
 [dependencies.arduino-hal]
 git = "https://github.com/rahix/avr-hal"

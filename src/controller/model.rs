@@ -1,4 +1,4 @@
-use arduino_millis_driver::millis;
+use millis_driver::millis;
 use elinalgebra::{F32x2, F32x3};
 use embedded_hal::blocking::{
     delay::DelayMs,

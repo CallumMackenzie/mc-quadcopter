@@ -10,15 +10,15 @@ use panic_halt as _;
 #[arduino_hal::entry]
 fn main() -> ! {
     // mpu_test();
-    // servo_test();
+    servo_test();
     // radio_send_test();
-    radio_recieve_test();
+    // radio_recieve_test();
 }
 
 #[allow(dead_code)]
 fn mpu_test() -> ! {
     use arduino_hal::I2c;
-    use arduino_millis_driver::*;
+    use millis_driver::*;
     use controller::model::*;
 
     // Retrieve resources
@@ -143,7 +143,7 @@ fn radio_recieve_test() -> ! {
         CommunicationError(v) => upanic!(&mut serial, "Communication error: {}", v),
         MaximumRetries => upanic!(&mut serial, "Max retries reached"),
     });
-	uprint!(&mut serial, "Started listening");
+    uprint!(&mut serial, "Started listening");
 
     loop {
         while !nrf_chip.data_available().unwrap() {
@@ -208,7 +208,7 @@ fn radio_send_test() -> ! {
     }
     nrf_chip.open_writing_pipe(b"drone").unwrap();
 
-	let mut ctr = 0i32;
+    let mut ctr = 0i32;
 
     loop {
         while let Err(_) = nrf_chip.write(&mut delay, &ctr.to_be_bytes()) {
@@ -216,7 +216,7 @@ fn radio_send_test() -> ! {
             uprint!(&mut serial, "Could not transmit. Waiting...");
         }
         uprint!(&mut serial, "Sent!");
-		ctr += 1;
-		arduino_hal::delay_ms(100);
+        ctr += 1;
+        arduino_hal::delay_ms(100);
     }
 }

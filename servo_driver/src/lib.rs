@@ -1,16 +1,17 @@
 #![no_std]
 
 //! Servo driver interfaces for the arduino uno
-//! See [this site](https://www.arduino.cc/en/pmwiki.php?n=Tutorial/SecretsOfArduinoPWM) for info on 
+//! See [this site](https://www.arduino.cc/en/pmwiki.php?n=Tutorial/SecretsOfArduinoPWM) for info on
 //! implementation.
 
 use arduino_hal::port::{mode::Output, Pin};
 use atmega_hal::{
-    pac::TC2,
+    pac::{TC0, TC2},
     port::{PB3, PD3},
 };
 use avr_hal_generic::port::PinOps;
 use core::cell::RefCell;
+use millis_driver::millis_initialized;
 
 /// A generic limited servo driver
 pub trait ServoDriver {
@@ -53,15 +54,10 @@ where
 impl Traxxas2080Servo<PD3, TC2> {
     pub fn pd3(tc2: &RefCell<TC2>, pin: Pin<Output, PD3>) -> Self {
         enable_pwm_tc2(tc2.as_ptr());
-        Self { pin, tc: tc2.as_ptr() }
-    }
-}
-
-// Pin D11
-impl Traxxas2080Servo<PB3, TC2> {
-    pub fn pb3(tc2: &RefCell<TC2>, pin: Pin<Output, PB3>) -> Self {
-        enable_pwm_tc2(tc2.as_ptr());
-        Self { pin, tc: tc2.as_ptr() }
+        Self {
+            pin,
+            tc: tc2.as_ptr(),
+        }
     }
 }
 
@@ -69,6 +65,17 @@ impl Traxxas2080Servo<PB3, TC2> {
 impl ServoDriverDelegate for Traxxas2080Servo<PD3, TC2> {
     fn set_duty(&mut self, duty: u8) {
         unsafe { (*(self.tc)).ocr2b.write(|w| w.bits(duty)) }
+    }
+}
+
+// Pin D11
+impl Traxxas2080Servo<PB3, TC2> {
+    pub fn pb3(tc2: &RefCell<TC2>, pin: Pin<Output, PB3>) -> Self {
+        enable_pwm_tc2(tc2.as_ptr());
+        Self {
+            pin,
+            tc: tc2.as_ptr(),
+        }
     }
 }
 
@@ -90,5 +97,22 @@ fn enable_pwm_tc2(tc2: *mut TC2) {
                 .match_clear()
         });
         (*tc2).tccr2b.write(|w| w.cs2().prescale_1024());
+    }
+}
+
+#[allow(dead_code)]
+fn enable_pwm_tc0(tc0: *mut TC0) {
+    if !millis_initialized() {
+        unsafe {
+            (*tc0).tccr0a.write(|w| {
+                w.wgm0()
+                    .pwm_fast()
+                    .com0a()
+                    .match_clear()
+                    .com0b()
+                    .match_clear()
+            });
+            (*tc0).tccr0b.write(|w| w.cs0().prescale_1024());
+        }
     }
 }
