@@ -1,9 +1,12 @@
 [build]
-target = "avr-specs/avr-atmega328p.json"
+target = "thumbv6m-none-eabi"
 
-[target.'cfg(target_arch = "avr")']
-runner = "ravedude uno -cb 57600"
+[target.thumbv6m-none-eabi]
+rustflags = [
+    "-C", "link-arg=--nmagic",
+    "-C", "link-arg=-Tlink.x",
+    "-C", "inline-threshold=5",
+    "-C", "no-vectorize-loops",
+]
 
-[unstable]
-build-std = ["core"]
-build-std-features = ["compiler-builtins-mangled-names"]
+runner = "elf2uf2-rs -d"
