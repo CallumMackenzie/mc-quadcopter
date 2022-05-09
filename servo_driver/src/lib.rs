@@ -6,8 +6,8 @@
 
 use arduino_hal::port::{mode::Output, Pin};
 use atmega_hal::{
-    pac::{TC0, TC2},
-    port::{PB3, PD3},
+    pac::{TC0, TC1, TC2},
+    port::{PB1, PB2, PB3, PD3, PD5, PD6},
 };
 use avr_hal_generic::port::PinOps;
 use core::cell::RefCell;
@@ -86,6 +86,87 @@ impl ServoDriverDelegate for Traxxas2080Servo<PB3, TC2> {
     }
 }
 
+// Pin D9
+impl Traxxas2080Servo<PB1, TC1> {
+    pub fn pb1(tc1: &RefCell<TC1>, pin: Pin<Output, PB1>) -> Self {
+        enable_pwm_tc1(tc1.as_ptr());
+        Self {
+            pin,
+            tc: tc1.as_ptr(),
+        }
+    }
+}
+
+// Pin D9
+impl ServoDriverDelegate for Traxxas2080Servo<PB1, TC1> {
+    fn set_duty(&mut self, duty: u8) {
+        unsafe { (*(self.tc)).ocr1a.write(|w| w.bits(duty as u16)) }
+    }
+}
+
+// Pin D10
+impl Traxxas2080Servo<PB2, TC1> {
+    pub fn pb2(tc1: &RefCell<TC1>, pin: Pin<Output, PB2>) -> Self {
+        enable_pwm_tc1(tc1.as_ptr());
+        Self {
+            pin,
+            tc: tc1.as_ptr(),
+        }
+    }
+}
+
+// Pin D10
+impl ServoDriverDelegate for Traxxas2080Servo<PB2, TC1> {
+    fn set_duty(&mut self, duty: u8) {
+        unsafe { (*(self.tc)).ocr1b.write(|w| w.bits(duty as u16)) }
+    }
+}
+
+// Pin D5
+impl Traxxas2080Servo<PD5, TC0> {
+    pub fn pd5(tc0: &RefCell<TC0>, pin: Pin<Output, PD5>) -> Self {
+        enable_pwm_tc0(tc0.as_ptr());
+        Self {
+            pin,
+            tc: tc0.as_ptr(),
+        }
+    }
+}
+
+// Pin D5
+impl ServoDriverDelegate for Traxxas2080Servo<PD5, TC0> {
+    fn set_duty(&mut self, duty: u8) {
+        unsafe { (*(self.tc)).ocr0b.write(|w| w.bits(duty)) }
+    }
+}
+
+// Pin D6
+impl Traxxas2080Servo<PD6, TC0> {
+    pub fn pd6(tc0: &RefCell<TC0>, pin: Pin<Output, PD6>) -> Self {
+        enable_pwm_tc0(tc0.as_ptr());
+        Self {
+            pin,
+            tc: tc0.as_ptr(),
+        }
+    }
+}
+
+// Pin D6
+impl ServoDriverDelegate for Traxxas2080Servo<PD6, TC0> {
+    fn set_duty(&mut self, duty: u8) {
+        unsafe { (*(self.tc)).ocr0a.write(|w| w.bits(duty)) }
+    }
+}
+
+fn enable_pwm_tc1(tc1: *mut TC1) {
+    unsafe {
+        (*tc1)
+            .tccr1a
+            .write(|w| w.wgm1().bits(1).com1a().match_clear().com1b().match_clear());
+        (*tc1).tccr1b.write(|w| w.cs1().prescale_1024());
+    }
+}
+
 fn enable_pwm_tc2(tc2: *mut TC2) {
     unsafe {
         (*tc2).tccr2a.write(|w| {
@@ -100,7 +181,6 @@ fn enable_pwm_tc2(tc2: *mut TC2) {
     }
 }
 
-#[allow(dead_code)]
 fn enable_pwm_tc0(tc0: *mut TC0) {
     if !millis_initialized() {
         unsafe {

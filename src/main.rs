@@ -108,7 +108,7 @@ fn radio_recieve_test() -> ! {
         clock: spi::SerialClockRate::OscfOver4,
         mode: SPI_MODE,
     };
-    uprint!(&mut serial, "Settins constructed");
+    uprint!(&mut serial, "Settings constructed");
     let (spi, ncs) = spi::Spi::new(dp.SPI, sck, mosi, miso, ss, settings);
     uprint!(&mut serial, "SPI & NCS constructed");
 
