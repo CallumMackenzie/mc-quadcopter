@@ -46,14 +46,9 @@
 //!
 //! ```
 
-/// Constants for MPU6050 addresses & values
-pub mod consts;
-/// Utils generally for manipulating bits
-pub mod utils;
+use core::f32::consts::PI;
 
 pub use consts::*;
-use core::f32::consts::PI;
-use elinalgebra::{F32x2, F32x3};
 use embedded_hal::blocking::{
     delay::DelayMs,
     i2c::{Write, WriteRead},
@@ -61,6 +56,13 @@ use embedded_hal::blocking::{
 use micromath::F32Ext;
 use ufmt::derive::uDebug;
 use utils::*;
+
+use elinalgebra::{F32x2, F32x3};
+
+/// Constants for MPU6050 addresses & values
+pub mod consts;
+/// Utils generally for manipulating bits
+pub mod utils;
 
 /// The mpu6050 driver struct
 pub struct Mpu6050<T> {
@@ -81,8 +83,8 @@ pub struct Mpu6050<T> {
 }
 
 impl<T, E> Mpu6050<T>
-where
-    T: Write<Error = E> + WriteRead<Error = E>,
+    where
+        T: Write<Error=E> + WriteRead<Error=E>,
 {
     /// Creates a new mpu driver instance with the given i2c bus driver
     pub fn new(i2c: T) -> Self {

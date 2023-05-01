@@ -1,4 +1,5 @@
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+
 use ufmt::derive::uDebug;
 
 #[derive(Copy, Clone, Debug, uDebug)]
@@ -21,21 +22,21 @@ impl<T: Copy> Vector3<T> {
 }
 
 impl<T> Mul<f32> for Vector3<T>
-where T: Mul<f32, Output = T>
+    where T: Mul<f32, Output=T>
 {
-	type Output = Self;
-	fn mul(self, o: f32) -> Self::Output {
-		Self {
-			x: self.x * o,
-			y: self.y * o,
-			z: self.z * o,
-		}
-	}
+    type Output = Self;
+    fn mul(self, o: f32) -> Self::Output {
+        Self {
+            x: self.x * o,
+            y: self.y * o,
+            z: self.z * o,
+        }
+    }
 }
 
 impl<T> DivAssign<f32> for Vector3<T>
-where
-    T: DivAssign<f32>,
+    where
+        T: DivAssign<f32>,
 {
     fn div_assign(&mut self, o: f32) {
         self.x /= o;
@@ -45,8 +46,8 @@ where
 }
 
 impl<T> MulAssign<f32> for Vector3<T>
-where
-    T: MulAssign<f32>,
+    where
+        T: MulAssign<f32>,
 {
     fn mul_assign(&mut self, o: f32) {
         self.x *= o;
@@ -56,8 +57,8 @@ where
 }
 
 impl<T> AddAssign<f32> for Vector3<T>
-where
-    T: AddAssign<f32>,
+    where
+        T: AddAssign<f32>,
 {
     fn add_assign(&mut self, o: f32) {
         self.x += o;
@@ -67,8 +68,8 @@ where
 }
 
 impl<T> SubAssign<f32> for Vector3<T>
-where
-    T: SubAssign<f32>,
+    where
+        T: SubAssign<f32>,
 {
     fn sub_assign(&mut self, o: f32) {
         self.x -= o;
@@ -78,8 +79,8 @@ where
 }
 
 impl<T> Add for Vector3<T>
-where
-    T: Add<T, Output = T>,
+    where
+        T: Add<T, Output=T>,
 {
     type Output = Self;
     fn add(self, other: Self) -> Self::Output {
@@ -92,8 +93,8 @@ where
 }
 
 impl<T> Sub for Vector3<T>
-where
-    T: Sub<T, Output = T>,
+    where
+        T: Sub<T, Output=T>,
 {
     type Output = Self;
     fn sub(self, other: Self) -> Self::Output {
@@ -106,8 +107,8 @@ where
 }
 
 impl<T> Mul for Vector3<T>
-where
-    T: Mul<T, Output = T>,
+    where
+        T: Mul<T, Output=T>,
 {
     type Output = Self;
     fn mul(self, other: Self) -> Self::Output {
@@ -120,8 +121,8 @@ where
 }
 
 impl<T> Div for Vector3<T>
-where
-    T: Div<T, Output = T>,
+    where
+        T: Div<T, Output=T>,
 {
     type Output = Self;
     fn div(self, other: Self) -> Self::Output {
@@ -134,8 +135,8 @@ where
 }
 
 impl<T> AddAssign for Vector3<T>
-where
-    T: AddAssign<T>,
+    where
+        T: AddAssign<T>,
 {
     fn add_assign(&mut self, other: Self) {
         self.x += other.x;
@@ -145,8 +146,8 @@ where
 }
 
 impl<T> SubAssign for Vector3<T>
-where
-    T: SubAssign<T>,
+    where
+        T: SubAssign<T>,
 {
     fn sub_assign(&mut self, other: Self) {
         self.x -= other.x;
@@ -156,8 +157,8 @@ where
 }
 
 impl<T> MulAssign for Vector3<T>
-where
-    T: MulAssign<T>,
+    where
+        T: MulAssign<T>,
 {
     fn mul_assign(&mut self, other: Self) {
         self.x *= other.x;
@@ -167,8 +168,8 @@ where
 }
 
 impl<T> DivAssign for Vector3<T>
-where
-    T: DivAssign<T>,
+    where
+        T: DivAssign<T>,
 {
     fn div_assign(&mut self, other: Self) {
         self.x /= other.x;

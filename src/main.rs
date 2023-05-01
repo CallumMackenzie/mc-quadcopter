@@ -1,16 +1,21 @@
 #![no_std]
 #![no_main]
 
-use cortex_m_rt::entry;
+use embedded_hal::blocking::spi;
 use embedded_hal::digital::v2::OutputPin;
-use embedded_time::rate::*;
 use panic_halt as _;
+use rp2040_hal::gpio;
 use rp_pico::hal;
 use rp_pico::hal::pac;
 use rp_pico::hal::prelude::*;
 
+use cortex_m_rt::entry;
+use embedded_time::rate::*;
+
 #[entry]
-fn main() -> ! {}
+fn main() -> ! {
+    loop {}
+}
 
 #[allow(dead_code)]
 fn radio_recieve_test() -> ! {
@@ -35,8 +40,8 @@ fn radio_recieve_test() -> ! {
         &mut pac.RESETS,
         &mut watchdog,
     )
-    .ok()
-    .unwrap();
+        .ok()
+        .unwrap();
     let sio = hal::Sio::new(pac.SIO);
     let pins = rp_pico::Pins::new(
         pac.IO_BANK0,

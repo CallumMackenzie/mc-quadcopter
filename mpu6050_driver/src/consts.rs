@@ -18,6 +18,7 @@ pub const TEMP_OFFSET: f32 = 36.53;
 pub const TEMP_SENSITIVITY: f32 = 340.0;
 
 pub struct GYRO_CONFIG;
+
 impl GYRO_CONFIG {
     pub const ADDR: u8 = 0x1b;
     pub const XG_ST_BIT: u8 = 7;
@@ -28,6 +29,7 @@ impl GYRO_CONFIG {
 }
 
 pub struct ACCEL_CONFIG;
+
 impl ACCEL_CONFIG {
     pub const ADDR: u8 = 0x1c;
     pub const XA_ST_BIT: u8 = 7;
@@ -37,6 +39,7 @@ impl ACCEL_CONFIG {
 }
 
 pub struct PWR_MGMT_1;
+
 impl PWR_MGMT_1 {
     pub const ADDR: u8 = 0x6b;
     pub const RESET_BIT: u8 = 7;
@@ -48,6 +51,7 @@ impl PWR_MGMT_1 {
 }
 
 pub struct CONFIG;
+
 impl CONFIG {
     pub const ADDR: u8 = 0x1a;
     pub const FIFO_MODE_BIT: u8 = 6;
@@ -56,6 +60,7 @@ impl CONFIG {
 }
 
 pub struct PWR_MGMT_2;
+
 impl PWR_MGMT_2 {
     pub const ADDR: u8 = 0x6c;
     pub const LP_WAKE_CTRL_BITS: BitBlock = BitBlock { len: 2, start: 6 };
@@ -68,12 +73,14 @@ impl PWR_MGMT_2 {
 }
 
 pub struct WHO_AM_I;
+
 impl WHO_AM_I {
     pub const ADDR: u8 = 0x75;
     pub const WHO_AM_I_BITS: BitBlock = BitBlock { start: 0, len: 8 };
 }
 
 pub struct TEMP_OUT;
+
 impl TEMP_OUT {
     pub const ADDR: u8 = 0x41;
     pub const BYTES: ByteBlock = ByteBlock { start: 0, len: 2 };
@@ -81,21 +88,25 @@ impl TEMP_OUT {
 
 pub mod ACCEL_OUT {
     use crate::consts::ByteBlock;
+
     pub const ADDR: u8 = 0x3b;
 
     pub struct X;
+
     impl X {
         pub const ADDR: u8 = 0x3b;
         pub const BYTES: ByteBlock = ByteBlock { start: 0, len: 2 };
     }
 
     pub struct Y;
+
     impl Y {
         pub const ADDR: u8 = 0x3d;
         pub const BYTES: ByteBlock = ByteBlock { start: 0, len: 2 };
     }
 
     pub struct Z;
+
     impl Z {
         pub const ADDR: u8 = 0x3f;
         pub const BYTES: ByteBlock = ByteBlock { start: 0, len: 2 };
@@ -108,18 +119,21 @@ pub mod GYRO_OUT {
     pub const ADDR: u8 = 0x43;
 
     pub struct X;
+
     impl X {
         pub const ADDR: u8 = 0x43;
         pub const BYTES: ByteBlock = ByteBlock { start: 0, len: 2 };
     }
 
     pub struct Y;
+
     impl Y {
         pub const ADDR: u8 = 0x45;
         pub const BYTES: ByteBlock = ByteBlock { start: 0, len: 2 };
     }
 
     pub struct Z;
+
     impl Z {
         pub const ADDR: u8 = 0x47;
         pub const BYTES: ByteBlock = ByteBlock { start: 0, len: 2 };
