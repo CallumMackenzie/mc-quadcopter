@@ -1,33 +1,48 @@
 #![no_std]
 #![no_main]
 
-use cortex_m::asm::delay;
-use cortex_m::prelude::*;
-use defmt::info;
-use defmt_rtt as _;
-use embedded_hal::digital::v2::{OutputPin, ToggleableOutputPin};
-use embedded_hal::PwmPin;
-// Ensure we halt the program on panic (if we don't mention this crate it won't
-// be linked)
-use panic_halt as _;
-// A shorter alias for the Hardware Abstraction Layer, which provides
-// higher-level drivers.
-use rp_pico::hal;
-// A shorter alias for the Peripheral Access Crate, which provides low-level
-// register access
-use rp_pico::hal::pac;
-// GPIO traits
-use rp_pico::hal::prelude::*;
+extern crate alloc;
 
-/// Entry point to our bare-metal application.
-///
-/// The `#[rp2040_hal::entry]` macro ensures the Cortex-M start-up code calls this function
-/// as soon as all global variables and the spinlock are initialised.
-///
-/// The function configures the RP2040 peripherals, then fades the LED in an
-/// infinite loop.
+use alloc::format;
+use alloc::string::{String, ToString};
+use core::alloc::{GlobalAlloc, Layout};
+
+use cortex_m::asm::delay;
+use cortex_m::delay::Delay;
+use defmt::export::str;
+use defmt_rtt as _;
+use embedded_alloc::Heap;
+use embedded_hal::digital::v2::{OutputPin, ToggleableOutputPin};
+use embedded_hal::timer::{Cancel, CountDown};
+use fugit::{ExtU32, RateExtU32};
+use mpu6050_driver::Mpu6050;
+use panic_halt as _;
+use rp2040_hal::{clocks::SystemClock, I2C, Timer};
+use rp2040_hal::gpio::{FunctionI2C, Pin, PullDownDisabled, PushPullOutput, ValidPinMode};
+use rp2040_hal::gpio::bank0::{BankPinId, Gpio0, Gpio14, Gpio15};
+use rp2040_hal::pwm::{ChannelId, Slices, ValidPwmOutputPin};
+use rp_pico::{hal, Pins};
+use rp_pico::hal::pac;
+use rp_pico::hal::prelude::*;
+use rp_pico::pac::{I2C1, RESETS};
+use ufmt::uwriteln;
+use usb_device::{class_prelude::*, prelude::*};
+use usbd_serial::{SerialPort, USB_CLASS_CDC};
+
+use motor_driver::{Motor, MotorManager};
+
+#[global_allocator]
+static HEAP: Heap = Heap::empty();
+
 #[rp2040_hal::entry]
 fn main() -> ! {
+    {
+        use core::mem::MaybeUninit;
+        const HEAP_SIZE: usize = 1024;
+        static mut HEAP_MEM: [MaybeUninit<u8>; HEAP_SIZE] = [MaybeUninit::uninit(); HEAP_SIZE];
+        unsafe { HEAP.init(HEAP_MEM.as_ptr() as usize, HEAP_SIZE) }
+    }
+
     // Grab our singleton objects
     let mut pac = pac::Peripherals::take().unwrap();
     let core = pac::CorePeripherals::take().unwrap();
@@ -36,7 +51,6 @@ fn main() -> ! {
     let mut watchdog = hal::Watchdog::new(pac.WATCHDOG);
 
     // Configure the clocks
-    //
     // The default is to generate a 125 MHz system clock
     let clocks = hal::clocks::init_clocks_and_plls(
         rp_pico::XOSC_CRYSTAL_FREQ,
@@ -50,55 +64,133 @@ fn main() -> ! {
         .ok()
         .unwrap();
 
-    let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
+    let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
     // The single-cycle I/O block controls our GPIO pins
     let sio = hal::Sio::new(pac.SIO);
 
     // Set the pins up according to their function on this particular board
-    let pins = rp_pico::Pins::new(
+    let pins = Pins::new(
         pac.IO_BANK0,
         pac.PADS_BANK0,
         sio.gpio_bank0,
         &mut pac.RESETS,
     );
 
-    let mut led_pin = pins.led.into_push_pull_output();
+    let usb_bus = UsbBusAllocator::new(hal::usb::UsbBus::new(
+        pac.USBCTRL_REGS,
+        pac.USBCTRL_DPRAM,
+        clocks.usb_clock,
+        true,
+        &mut pac.RESETS,
+    ));
+
+
+    let mut serial = SerialPort::new(&usb_bus);
+    // Create a USB device with a fake VID and PID
+    let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x16c0, 0x27dd))
+        .manufacturer("Callum Mackenzie")
+        .product("Raspberry Pi Pico Drone")
+        .serial_number("TEST")
+        .device_class(USB_CLASS_CDC) // from: https://www.usb.org/defined-class-codes
+        .build();
 
     // Init PWMs
-    let mut pwm_slices = hal::pwm::Slices::new(pac.PWM, &mut pac.RESETS);
+    let mut pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
 
-    // Configure PWM0
-    let pwm = &mut pwm_slices.pwm0;
-    pwm.set_ph_correct();
-    pwm.set_div_int(20u8); // 50 hz
-    pwm.enable();
+    let mut led = pins.led.into_push_pull_output();
+    // let mut motor_manager = setup_motors(&mut delay, &mut pwm_slices);
+    let mut mpu6050 = setup_accelerometer(&clocks.system_clock,
+                                          &mut pac.RESETS,
+                                          &mut delay,
+                                          pac.I2C1,
+                                          pins.gpio14,
+                                          pins.gpio15);
 
-    // Output channel B on PWM0 to the GPIO1 pin
-    let channel = &mut pwm.channel_b;
-    channel.output_to(pins.gpio1);
+    let timer = Timer::new(pac.TIMER, &mut pac.RESETS);
+    let mut greeted = false;
 
-    let ms_range = (0.5, 2.0);
+    loop {
+        if !greeted && timer.get_counter().ticks() > 2_000_000 {
+            serial.write("Welcome to Drone USB Interface\r\n".as_bytes()).unwrap();
+            greeted = true;
+        }
 
-    // 100% throttle
-    channel.set_duty((channel.get_max_duty() as f32 / 20.0 * ms_range.1) as u16);
-    for _ in 0..(5 * 5 * 2) {
-        led_pin.set_high().unwrap();
-        delay.delay_ms(100);
-        led_pin.set_low().unwrap();
-        delay.delay_ms(100);
+        if usb_dev.poll(&mut [&mut serial]) {
+            let mut buf = [0u8; 64];
+            match serial.read(&mut buf) {
+                Err(_e) => {}
+                Ok(0) => {}
+                Ok(count) => {
+                    buf.iter_mut().take(count)
+                        .for_each(|x| match *x as char {
+                            't' => {
+                                let tmp = mpu6050.read_temp().unwrap();
+                                let str = format!("MPU6050 Temp: {:.2}\r\n", tmp);
+                                serial.write(str.as_bytes()).unwrap();
+                            }
+                            'a' => {
+                                let acc = mpu6050.read_acc().unwrap();
+                                let str =
+                                    format!("Planar acceleration: {:.2}, {:.2}, {:.2}\r\n",
+                                            acc.x, acc.y, acc.z);
+                                serial.write(str.as_bytes()).unwrap();
+                            }
+                            'g' => {
+                                let gyro = mpu6050.read_gyro().unwrap();
+                                let str =
+                                    format!("Gyro acceleration: {:.2}, {:.2}, {:.2}\r\n",
+                                            gyro.x, gyro.y, gyro.z);
+                                serial.write(str.as_bytes()).unwrap();
+                            }
+                            _ => {}
+                        });
+                }
+            }
+        }
     }
+}
 
-    // 0% throttle
-    channel.set_duty((channel.get_max_duty() as f32 / 20.0 * ms_range.0) as u16);
-    for _ in 0..(10 * 5) {
-        led_pin.set_high().unwrap();
-        delay.delay_ms(50);
-        led_pin.set_low().unwrap();
-        delay.delay_ms(50);
-    }
+// fn setup_motors<'a, LED: PinId>(
+//     delay: &'a mut Delay,
+//     pwm_slices: &'a mut Slices,
+//     led: &mut Pin<LED, PushPullOutput>,
+//     pins: Pins,
+// ) -> MotorManager<'a> {
+// // Configure PWM0
+//     let pwm = &mut pwm_slices.pwm0;
+//     pwm.set_ph_correct();
+//     pwm.set_div_int(20u8); // 50 hz
+//     pwm.enable();
+//
+// // Output channel B on PWM0 to the GPIO1 pin
+//     let mut motor1 = Motor::new_b(&mut pwm.channel_b, 20, pins.gpio1);
+//
+// // This needs to be done ASAP
+//     let mut motor_manager = MotorManager {
+//         motors: &mut [&mut motor1],
+//     };
+//
+//     motor_manager.setup(led, delay).unwrap();
+//     return motor_manager;
+// }
 
-    led_pin.set_low().unwrap();
-    channel.set_duty((channel.get_max_duty() as f32 / 20.0 * 0.55) as u16);
-    loop {}
+fn setup_accelerometer(system_clock: &SystemClock,
+                       resets: &mut RESETS,
+                       delay: &mut Delay,
+                       i2c1: I2C1,
+                       gpio14: Pin<Gpio14, PullDownDisabled>,
+                       gpio15: Pin<Gpio15, PullDownDisabled>)
+                       -> Mpu6050<I2C<I2C1, (Pin<Gpio14, FunctionI2C>, Pin<Gpio15, FunctionI2C>)>> {
+    let mut mpu = Mpu6050::new(I2C::i2c1(
+        i2c1,
+        gpio14.into_mode(),
+        gpio15.into_mode(),
+        400.kHz(),
+        resets,
+        system_clock.freq().to_Hz().Hz(),
+    ));
+    mpu.init(delay).unwrap();
+    mpu.calculate_all_imu_error(10).unwrap();
+    return mpu;
 }

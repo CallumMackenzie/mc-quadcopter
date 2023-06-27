@@ -1,0 +1,3 @@
+cargo:rustc-link-search=C:\Users\Alexx\IdeaProjects\rc-plane\motor_driver\target\thumbv6m-none-eabi\debug\build\rp2040-pac-87d00bd3e63800c2\out
+cargo:rerun-if-changed=device.x
+cargo:rerun-if-changed=build.rs

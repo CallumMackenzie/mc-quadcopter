@@ -1,0 +1,11 @@
+[package]
+name = "motor_driver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+embedded-hal = "0.2.3"
+rp2040-hal = "0.8.0"
+cortex-m = "0.7.2"
+rp-pico = "0.7.0"
+
