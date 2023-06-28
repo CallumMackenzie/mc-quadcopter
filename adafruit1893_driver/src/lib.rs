@@ -13,8 +13,8 @@ pub struct Adafruit1893<T> {
 }
 
 impl<T, E> Adafruit1893<T>
-    where
-        T: Write<Error=E> + WriteRead<Error=E>,
+where
+    T: Write<Error = E> + WriteRead<Error = E>,
 {
     pub fn new(i2c: T) -> Self {
         Adafruit1893 {
@@ -28,11 +28,13 @@ impl<T, E> Adafruit1893<T>
         Ok(())
     }
 
-    pub fn reset_chip<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), Adafruit1893Error<E>> {
+    pub fn reset_chip<D: DelayMs<u8>>(
+        &mut self,
+        delay: &mut D,
+    ) -> Result<(), Adafruit1893Error<E>> {
         self.i2c.write_byte(CTRL_REG1::ADDR, CTRL_REG1::RESET)?;
         let mut ctr = 0;
-        while self.i2c.read_byte(CTRL_REG1::ADDR)? & CTRL_REG1::RESET != 0
-            && ctr < 10 {
+        while self.i2c.read_byte(CTRL_REG1::ADDR)? & CTRL_REG1::RESET != 0 && ctr < 10 {
             delay.delay_ms(10);
             ctr += 1;
         }
@@ -55,7 +57,7 @@ impl<E> From<I2cWrapperError<E>> for Adafruit1893Error<E> {
     fn from(e: I2cWrapperError<E>) -> Self {
         match e {
             I2cWrapperError::I2c(x) => Adafruit1893Error::I2c(x),
-            I2cWrapperError::InvalidChipId(x) => Adafruit1893Error::InvalidChipId(x)
+            I2cWrapperError::InvalidChipId(x) => Adafruit1893Error::InvalidChipId(x),
         }
     }
 }

@@ -56,7 +56,7 @@ use embedded_hal::blocking::{
 use micromath::F32Ext;
 
 use elinalgebra::{F32x2, F32x3};
-use i2c_tools::{I2cDevice, I2cWrapperError, read_word_2c};
+use i2c_tools::{read_word_2c, I2cDevice, I2cWrapperError};
 
 /// Constants for MPU6050 addresses & values
 pub mod consts;
@@ -78,8 +78,8 @@ pub struct Mpu6050<T> {
 }
 
 impl<T, E> Mpu6050<T>
-    where
-        T: Write<Error=E> + WriteRead<Error=E>,
+where
+    T: Write<Error = E> + WriteRead<Error = E>,
 {
     /// Creates a new mpu driver instance with the given i2c bus driver
     pub fn new(i2c: T) -> Self {
@@ -303,7 +303,7 @@ impl<E> From<I2cWrapperError<E>> for Mpu6050Error<E> {
     fn from(e: I2cWrapperError<E>) -> Self {
         match e {
             I2cWrapperError::I2c(x) => Mpu6050Error::I2c(x),
-            I2cWrapperError::InvalidChipId(x) => Mpu6050Error::InvalidChipId(x)
+            I2cWrapperError::InvalidChipId(x) => Mpu6050Error::InvalidChipId(x),
         }
     }
 }

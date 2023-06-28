@@ -1,33 +1,21 @@
 use alloc::boxed::Box;
-use alloc::format;
-use alloc::string::{String, ToString};
-use core::alloc::{GlobalAlloc, Layout};
 
-use cortex_m::asm::delay;
 use cortex_m::delay::Delay;
-use defmt::export::str;
+
 use defmt_rtt as _;
-use embedded_alloc::Heap;
-use embedded_hal::digital::v2::{OutputPin, ToggleableOutputPin};
-use embedded_hal::timer::{Cancel, CountDown};
-use fugit::{ExtU32, RateExtU32};
+
+use adafruit1893_driver::Adafruit1893;
+use fugit::RateExtU32;
+use motor_driver::{Motor, MotorManager};
 use mpu6050_driver::Mpu6050;
 use panic_halt as _;
-use rp2040_hal::{clocks::SystemClock, I2C, Timer};
-use rp2040_hal::gpio::{FunctionI2C, Pin, PinId, PullDownDisabled, PushPullOutput, ValidPinMode};
-use rp2040_hal::gpio::bank0::{BankPinId, Gpio0, Gpio1, Gpio14, Gpio15, Gpio2, Gpio3, Gpio8, Gpio9};
+use rp2040_hal::gpio::bank0::{Gpio0, Gpio1, Gpio14, Gpio15, Gpio2, Gpio3, Gpio8, Gpio9};
+use rp2040_hal::gpio::{FunctionI2C, Pin, PinId, PullDownDisabled, PushPullOutput};
 use rp2040_hal::pac::I2C0;
-use rp2040_hal::pwm::{ChannelId, FreeRunning, Pwm0, Pwm1, Slice, Slices, ValidPwmOutputPin};
-use rp_pico::{hal, Pins};
-use rp_pico::hal::pac;
+use rp2040_hal::pwm::{FreeRunning, Pwm0, Pwm1, Slice};
+use rp2040_hal::{clocks::SystemClock, I2C};
 use rp_pico::hal::prelude::*;
 use rp_pico::pac::{I2C1, RESETS};
-use ufmt::uwriteln;
-use usb_device::{class_prelude::*, prelude::*};
-use usbd_serial::{SerialPort, USB_CLASS_CDC};
-
-use adafruit1893_driver::{Adafruit1893, Adafruit1893Error};
-use motor_driver::{Motor, MotorManager};
 
 pub fn setup_motors<LED: PinId>(
     delay: &mut Delay,
@@ -47,10 +35,10 @@ pub fn setup_motors<LED: PinId>(
     pwm1.set_div_int(20u8); // 50 hz
     pwm1.enable();
 
-    let mut motor0 = Box::new(Motor::new_a(pwm0.channel_a, 20, p0));
-    let mut motor1 = Box::new(Motor::new_b(pwm0.channel_b, 20, p1));
-    let mut motor2 = Box::new(Motor::new_a(pwm1.channel_a, 20, p2));
-    let mut motor3 = Box::new(Motor::new_b(pwm1.channel_b, 20, p3));
+    let motor0 = Box::new(Motor::new_a(pwm0.channel_a, 20, p0));
+    let motor1 = Box::new(Motor::new_b(pwm0.channel_b, 20, p1));
+    let motor2 = Box::new(Motor::new_a(pwm1.channel_a, 20, p2));
+    let motor3 = Box::new(Motor::new_b(pwm1.channel_b, 20, p3));
     let mut motor_manager = MotorManager::new([motor0, motor1, motor2, motor3]);
     motor_manager.setup(led, delay).unwrap();
     return motor_manager;
@@ -84,7 +72,7 @@ pub fn setup_adafruit1893(
     resets: &mut RESETS,
     system_clock: &SystemClock,
 ) -> Adafruit1893<I2C<I2C0, (Pin<Gpio8, FunctionI2C>, Pin<Gpio9, FunctionI2C>)>> {
-    let mut a1893 = Adafruit1893::new(I2C::i2c0(
+    let a1893 = Adafruit1893::new(I2C::i2c0(
         i2c0,
         gpio8.into_mode(),
         gpio9.into_mode(),

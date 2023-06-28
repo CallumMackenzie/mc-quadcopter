@@ -7,18 +7,18 @@ use alloc::boxed::Box;
 use cortex_m::delay::Delay;
 use cortex_m::prelude::*;
 use embedded_hal::digital::v2::{OutputPin, ToggleableOutputPin};
-use rp2040_hal::gpio::{Pin, PinId, PinMode, PushPullOutput, ValidPinMode};
 use rp2040_hal::gpio::bank0::BankPinId;
+use rp2040_hal::gpio::{Pin, PinId, PinMode, PushPullOutput, ValidPinMode};
 use rp2040_hal::pwm::{
-    A, B, Channel, ChannelId, SliceId, SliceMode, ValidPwmOutputPin, ValidSliceMode,
+    Channel, ChannelId, SliceId, SliceMode, ValidPwmOutputPin, ValidSliceMode, A, B,
 };
 
 /// A motor with a given PWM channel
 pub struct Motor<S, M, C>
-    where
-        S: SliceId,
-        M: SliceMode + ValidSliceMode<S>,
-        C: ChannelId,
+where
+    S: SliceId,
+    M: SliceMode + ValidSliceMode<S>,
+    C: ChannelId,
 {
     channel: Channel<S, M, C>,
     initialized: bool,
@@ -41,9 +41,9 @@ pub trait SetupMotor {
 }
 
 impl<S, M> Motor<S, M, A>
-    where
-        S: SliceId,
-        M: SliceMode + ValidSliceMode<S>,
+where
+    S: SliceId,
+    M: SliceMode + ValidSliceMode<S>,
 {
     /// REQUIRES: Output is a valid pin for the given channel
     /// EFFECTS: Sets the channel output and returns a motor struct wrapper
@@ -52,9 +52,9 @@ impl<S, M> Motor<S, M, A>
         div_int: u8,
         output: Pin<P, PM>,
     ) -> Motor<S, M, A>
-        where
-            P: PinId + BankPinId + ValidPwmOutputPin<S, A>,
-            PM: PinMode + ValidPinMode<P>,
+    where
+        P: PinId + BankPinId + ValidPwmOutputPin<S, A>,
+        PM: PinMode + ValidPinMode<P>,
     {
         channel.output_to(output);
         let duty_per_ms = channel.get_max_duty() as f32 / div_int as f32;
@@ -68,9 +68,9 @@ impl<S, M> Motor<S, M, A>
 }
 
 impl<S, M> Motor<S, M, B>
-    where
-        S: SliceId,
-        M: SliceMode + ValidSliceMode<S>,
+where
+    S: SliceId,
+    M: SliceMode + ValidSliceMode<S>,
 {
     /// REQUIRES: Output is a valid pin for the given channel
     /// EFFECTS: Sets the channel output and returns a motor struct wrapper
@@ -79,9 +79,9 @@ impl<S, M> Motor<S, M, B>
         div_int: u8,
         output: Pin<P, PM>,
     ) -> Motor<S, M, B>
-        where
-            P: PinId + BankPinId + ValidPwmOutputPin<S, B>,
-            PM: PinMode + ValidPinMode<P>,
+    where
+        P: PinId + BankPinId + ValidPwmOutputPin<S, B>,
+        PM: PinMode + ValidPinMode<P>,
     {
         channel.output_to(output);
         let duty_per_ms = channel.get_max_duty() as f32 / div_int as f32;
@@ -95,9 +95,9 @@ impl<S, M> Motor<S, M, B>
 }
 
 impl<S, M> SetupMotor for Motor<S, M, A>
-    where
-        S: SliceId,
-        M: SliceMode + ValidSliceMode<S>,
+where
+    S: SliceId,
+    M: SliceMode + ValidSliceMode<S>,
 {
     fn set_thrust_pct(&mut self, pct: f32) {
         let duty =
@@ -120,9 +120,9 @@ impl<S, M> SetupMotor for Motor<S, M, A>
 }
 
 impl<S, M> SetupMotor for Motor<S, M, B>
-    where
-        S: SliceId,
-        M: SliceMode + ValidSliceMode<S>,
+where
+    S: SliceId,
+    M: SliceMode + ValidSliceMode<S>,
 {
     fn set_thrust_pct(&mut self, pct: f32) {
         let duty =
@@ -152,10 +152,18 @@ impl MotorManager {
         Self { motors }
     }
 
-    pub fn m0(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[0] }
-    pub fn m1(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[1] }
-    pub fn m2(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[2] }
-    pub fn m3(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[3] }
+    pub fn m0(&mut self) -> &mut Box<dyn SetupMotor> {
+        &mut self.motors[0]
+    }
+    pub fn m1(&mut self) -> &mut Box<dyn SetupMotor> {
+        &mut self.motors[1]
+    }
+    pub fn m2(&mut self) -> &mut Box<dyn SetupMotor> {
+        &mut self.motors[2]
+    }
+    pub fn m3(&mut self) -> &mut Box<dyn SetupMotor> {
+        &mut self.motors[3]
+    }
 
     pub fn setup<I: PinId>(
         &mut self,

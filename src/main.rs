@@ -5,36 +5,25 @@ mod drone;
 
 extern crate alloc;
 
-use alloc::boxed::Box;
 use alloc::format;
-use alloc::string::{String, ToString};
-use core::alloc::{GlobalAlloc, Layout};
 
-use cortex_m::asm::delay;
 use cortex_m::delay::Delay;
-use defmt::export::str;
+
 use defmt_rtt as _;
 use embedded_alloc::Heap;
-use embedded_hal::digital::v2::{OutputPin, ToggleableOutputPin};
-use embedded_hal::timer::{Cancel, CountDown};
-use fugit::{ExtU32, RateExtU32};
-use mpu6050_driver::Mpu6050;
+
 use panic_halt as _;
-use rp2040_hal::{clocks::SystemClock, I2C, Timer};
-use rp2040_hal::gpio::{FunctionI2C, Pin, PinId, PullDownDisabled, PushPullOutput, ValidPinMode};
-use rp2040_hal::gpio::bank0::{BankPinId, Gpio0, Gpio1, Gpio14, Gpio15, Gpio2, Gpio3, Gpio8, Gpio9};
-use rp2040_hal::pac::I2C0;
-use rp2040_hal::pwm::{ChannelId, FreeRunning, Pwm0, Pwm1, Slice, Slices, ValidPwmOutputPin};
-use rp_pico::{hal, Pins};
+
+use rp2040_hal::pwm::Slices;
 use rp_pico::hal::pac;
 use rp_pico::hal::prelude::*;
-use rp_pico::pac::{I2C1, RESETS};
-use ufmt::uwriteln;
+use rp_pico::{hal, Pins};
+
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
-use adafruit1893_driver::{Adafruit1893, Adafruit1893Error};
-use motor_driver::{Motor, MotorManager};
+use adafruit1893_driver::Adafruit1893Error;
+
 use crate::drone::{setup_adafruit1893, setup_motors, setup_mpu6050};
 
 #[global_allocator]
@@ -69,7 +58,9 @@ fn main() -> ! {
         pac.PLL_USB,
         &mut pac.RESETS,
         &mut watchdog,
-    ).ok().unwrap();
+    )
+    .ok()
+    .unwrap();
 
     let mut delay = Delay::new(core.SYST, clocks.system_clock.freq().to_Hz());
 
@@ -102,19 +93,19 @@ fn main() -> ! {
         .build();
 
     // Init PWMs
-    let mut pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
+    let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
 
     let mut led = pins.led.into_push_pull_output();
-    let mut motor_manager =
-        setup_motors(&mut delay,
-                     &mut led,
-                     pwm_slices.pwm0,
-                     pwm_slices.pwm1,
-                     pins.gpio0,
-                     pins.gpio1,
-                     pins.gpio2,
-                     pins.gpio3,
-        );
+    let mut motor_manager = setup_motors(
+        &mut delay,
+        &mut led,
+        pwm_slices.pwm0,
+        pwm_slices.pwm1,
+        pins.gpio0,
+        pins.gpio1,
+        pins.gpio2,
+        pins.gpio3,
+    );
     let mut mpu6050 = setup_mpu6050(
         pac.I2C1,
         pins.gpio14,
@@ -161,45 +152,50 @@ fn main() -> ! {
                             serial.write(str.as_bytes()).unwrap();
                         }
                         'b' => {
-                            serial.write("Initializing Adafruit 1893...\r\n".as_bytes()).unwrap();
+                            serial
+                                .write("Initializing Adafruit 1893...\r\n".as_bytes())
+                                .unwrap();
                             match a1893.init(&mut delay) {
-                                Ok(_) =>
-                                    serial.write("Adafruit 1893 ok.\r\n".as_bytes()).unwrap(),
-                                Err(Adafruit1893Error::I2c(e)) =>
-                                    serial.write(format!("Adafruit 1893 I2C error: {:?}\r\n", e)
-                                        .as_bytes()).unwrap(),
+                                Ok(_) => serial.write("Adafruit 1893 ok.\r\n".as_bytes()).unwrap(),
+                                Err(Adafruit1893Error::I2c(e)) => serial
+                                    .write(
+                                        format!("Adafruit 1893 I2C error: {:?}\r\n", e).as_bytes(),
+                                    )
+                                    .unwrap(),
                                 Err(Adafruit1893Error::InvalidChipId(x)) => {
-                                    let str = format!("Adafruit 1893 whoami failed: {:#04x}\r\n", x);
+                                    let str =
+                                        format!("Adafruit 1893 whoami failed: {:#04x}\r\n", x);
                                     serial.write(str.as_bytes()).unwrap()
                                 }
-                                Err(Adafruit1893Error::NoResponse) =>
-                                    serial.write("Adafruit 1893 no response\r\n".as_bytes()).unwrap()
+                                Err(Adafruit1893Error::NoResponse) => serial
+                                    .write("Adafruit 1893 no response\r\n".as_bytes())
+                                    .unwrap(),
                             };
-                        },
+                        }
                         'c' => {
                             motor_manager.turn_all_off();
                             serial.write("All motors off\r\n".as_bytes()).unwrap();
-                        },
+                        }
                         'm' => {
                             motor_manager.set_all_thrust_pct(0.05);
                             serial.write("All motors 5%\r\n".as_bytes()).unwrap();
-                        },
+                        }
                         '0' => {
                             motor_manager.m0().set_thrust_pct(0.05);
                             serial.write("M0 5%\r\n".as_bytes()).unwrap();
-                        },
+                        }
                         '1' => {
                             motor_manager.m1().set_thrust_pct(0.05);
                             serial.write("M1 5%\r\n".as_bytes()).unwrap();
-                        },
+                        }
                         '2' => {
                             motor_manager.m2().set_thrust_pct(0.05);
                             serial.write("M2 5%\r\n".as_bytes()).unwrap();
-                        },
+                        }
                         '3' => {
                             motor_manager.m3().set_thrust_pct(0.05);
                             serial.write("M3 5%\r\n".as_bytes()).unwrap();
-                        },
+                        }
                         _ => {}
                     });
                 }

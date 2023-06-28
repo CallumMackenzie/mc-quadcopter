@@ -13,8 +13,8 @@ pub struct I2cDevice<T> {
 }
 
 impl<T, X> I2cDevice<T>
-    where
-        T: Write<Error=X> + WriteRead<Error=X>,
+where
+    T: Write<Error = X> + WriteRead<Error = X>,
 {
     /// Creates a new I2C device wrapper
     pub fn new(i2c: T, slave_addr: u8) -> Self {
@@ -41,8 +41,13 @@ impl<T, X> I2cDevice<T>
     }
 
     /// Writes a series of bits to the given register
-    pub fn write_bits(&mut self, reg: u8, start_bit: u8, length: u8, data: u8)
-                      -> Result<(), I2cWrapperError<X>> {
+    pub fn write_bits(
+        &mut self,
+        reg: u8,
+        start_bit: u8,
+        length: u8,
+        data: u8,
+    ) -> Result<(), I2cWrapperError<X>> {
         let mut byte = self.read_byte(reg)?;
         set_bits(&mut byte, start_bit, length, data);
         self.write_byte(reg, byte)?;
@@ -55,9 +60,9 @@ impl<T, X> I2cDevice<T>
     }
 
     /// Verifies chip with provided addr
-    pub fn whoami(&mut self, whoamiAddr: u8, expValue: u8) -> Result<(), I2cWrapperError<X>> {
-        let addr = self.read_byte(whoamiAddr)?;
-        if addr != expValue {
+    pub fn whoami(&mut self, whoami_addr: u8, exp_value: u8) -> Result<(), I2cWrapperError<X>> {
+        let addr = self.read_byte(whoami_addr)?;
+        if addr != exp_value {
             Err(I2cWrapperError::InvalidChipId(addr))
         } else {
             Ok(())
