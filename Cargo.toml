@@ -23,6 +23,7 @@ nrf24-rs = "0.1"
 elinalgebra = { path = "elinalgebra" }
 mpu6050_driver = { path = "mpu6050_driver" }
 motor_driver = { path = "motor_driver" }
+adafruit1893_driver = { path = "adafruit1893_driver" }
 cortex-m-rt = "0.7.3"
 defmt = "0.3.4"
 defmt-rtt = "0.4.0"

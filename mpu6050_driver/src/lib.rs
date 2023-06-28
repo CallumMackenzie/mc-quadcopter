@@ -54,22 +54,17 @@ use embedded_hal::blocking::{
     i2c::{Write, WriteRead},
 };
 use micromath::F32Ext;
-use ufmt::derive::uDebug;
-use utils::*;
 
 use elinalgebra::{F32x2, F32x3};
+use i2c_tools::{I2cDevice, I2cWrapperError, read_word_2c};
 
 /// Constants for MPU6050 addresses & values
 pub mod consts;
-/// Utils generally for manipulating bits
-pub mod utils;
 
 /// The mpu6050 driver struct
 pub struct Mpu6050<T> {
-    /// I2c bus driver
-    i2c: T,
-    /// MPU slave addr
-    slave_addr: u8,
+    /// I2c device wrapper
+    i2c: I2cDevice<T>,
     /// Planar acceleration sensitivity
     acc_sensitivity: f32,
     /// Gyroscope sensitivity
@@ -89,8 +84,7 @@ impl<T, E> Mpu6050<T>
     /// Creates a new mpu driver instance with the given i2c bus driver
     pub fn new(i2c: T) -> Self {
         Mpu6050 {
-            i2c,
-            slave_addr: MPU_ADDR,
+            i2c: I2cDevice::new(i2c, MPU_ADDR),
             acc_sensitivity: AccelRange::G2.sensitivity(),
             gyro_sensitivity: GyroRange::D250.sensitivity(),
             gyro_err: F32x3::filled(0.0),
@@ -101,33 +95,24 @@ impl<T, E> Mpu6050<T>
 
     /// Wakes the mpu
     pub fn wake<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), Mpu6050Error<E>> {
-        self.write_byte(PWR_MGMT_1::ADDR, 0x0)?;
+        self.i2c.write_byte(PWR_MGMT_1::ADDR, 0x0)?;
         delay.delay_ms(100);
         Ok(())
     }
 
     /// Resets the mpu
     pub fn reset_device<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), Mpu6050Error<E>> {
-        self.write_bit(PWR_MGMT_1::ADDR, PWR_MGMT_1::RESET_BIT, true)?;
+        self.i2c
+            .write_bit(PWR_MGMT_1::ADDR, PWR_MGMT_1::RESET_BIT, true)?;
         delay.delay_ms(100);
         Ok(())
-    }
-
-    /// Verifies the integrity of the mpu
-    pub fn verify(&mut self) -> Result<(), Mpu6050Error<E>> {
-        let addr = self.read_byte(WHO_AM_I::ADDR)?;
-        if addr != MPU_ADDR {
-            Err(Mpu6050Error::InvalidChipId(addr))
-        } else {
-            Ok(())
-        }
     }
 
     /// Initializes the mpu
     pub fn init<D: DelayMs<u8>>(&mut self, delay: &mut D) -> Result<(), Mpu6050Error<E>> {
         self.reset_device(delay)?;
         self.wake(delay)?;
-        self.verify()?;
+        self.i2c.whoami(WHO_AM_I::ADDR, WHO_AM_I::EXP_RESULT)?;
         self.set_accel_range(AccelRange::G2)?;
         self.set_gyro_range(GyroRange::D250)?;
         Ok(())
@@ -137,21 +122,23 @@ impl<T, E> Mpu6050<T>
     pub fn read_temp(&mut self) -> Result<f32, Mpu6050Error<E>> {
         const NBYTES: usize = TEMP_OUT::BYTES.len as usize;
         let mut buff: [u8; NBYTES] = [0; NBYTES];
-        self.read_bytes(TEMP_OUT::ADDR, &mut buff)?;
+        self.i2c.read_bytes(TEMP_OUT::ADDR, &mut buff)?;
         let raw_tmp = read_word_2c(&buff) as f32;
         Ok((raw_tmp / TEMP_SENSITIVITY) + TEMP_OFFSET)
     }
 
     /// Enables or disables temperature measurement
     pub fn set_temp_enabled(&mut self, enabled: bool) -> Result<(), Mpu6050Error<E>> {
-        self.write_bit(PWR_MGMT_1::ADDR, PWR_MGMT_1::TEMP_DIS_BIT, !enabled)?;
+        self.i2c
+            .write_bit(PWR_MGMT_1::ADDR, PWR_MGMT_1::TEMP_DIS_BIT, !enabled)?;
         Ok(())
     }
 
     /// Sets the acceleration measurement range
     pub fn set_accel_range(&mut self, range: AccelRange) -> Result<(), Mpu6050Error<E>> {
         const BITS: BitBlock = ACCEL_CONFIG::ACCEL_FS_SEL_BITS;
-        self.write_bits(ACCEL_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
+        self.i2c
+            .write_bits(ACCEL_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
         self.acc_sensitivity = range.sensitivity();
         Ok(())
     }
@@ -159,7 +146,8 @@ impl<T, E> Mpu6050<T>
     /// Sets the gyro measurement range
     pub fn set_gyro_range(&mut self, range: GyroRange) -> Result<(), Mpu6050Error<E>> {
         const BITS: BitBlock = GYRO_CONFIG::GYRO_FS_SEL_BITS;
-        self.write_bits(GYRO_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
+        self.i2c
+            .write_bits(GYRO_CONFIG::ADDR, BITS.start, BITS.len, range as u8)?;
         self.gyro_sensitivity = range.sensitivity();
         Ok(())
     }
@@ -296,65 +284,31 @@ impl<T, E> Mpu6050<T>
 
     fn read_f32x3(&mut self, reg: u8, dst: &mut F32x3) -> Result<(), Mpu6050Error<E>> {
         let mut buf: [u8; 6] = [0; 6];
-        self.read_bytes(reg, &mut buf)?;
+        self.i2c.read_bytes(reg, &mut buf)?;
         dst.x = read_word_2c(&buf[0..2]) as f32;
         dst.y = read_word_2c(&buf[2..4]) as f32;
         dst.z = read_word_2c(&buf[4..6]) as f32;
         Ok(())
     }
-
-    /// Writes a single byte to the mpu6050 at the provided register
-    pub fn write_byte(&mut self, reg: u8, val: u8) -> Result<(), Mpu6050Error<E>> {
-        self.i2c.write(self.slave_addr, &[reg, val])?;
-        Ok(())
-    }
-
-    /// Reads a single byte from the connected mpu6050 at the register provided
-    pub fn read_byte(&mut self, reg: u8) -> Result<u8, Mpu6050Error<E>> {
-        let mut byte: [u8; 1] = [0; 1];
-        self.i2c.write_read(self.slave_addr, &[reg], &mut byte)?;
-        Ok(byte[0])
-    }
-
-    /// Reades bytes from the connected mpu6050 into buff
-    pub fn read_bytes(&mut self, reg: u8, buff: &mut [u8]) -> Result<(), Mpu6050Error<E>> {
-        self.i2c.write_read(self.slave_addr, &[reg], buff)?;
-        Ok(())
-    }
-
-    /// Writes a series of bits to an mpu6050 register
-    pub fn write_bits(
-        &mut self,
-        reg: u8,
-        start_bit: u8,
-        length: u8,
-        data: u8,
-    ) -> Result<(), Mpu6050Error<E>> {
-        let mut byte = self.read_byte(reg)?;
-        set_bits(&mut byte, start_bit, length, data);
-        self.write_byte(reg, byte)?;
-        Ok(())
-    }
-
-    /// Writes a single bit to an mpu6050 register
-    pub fn write_bit(&mut self, reg: u8, bit: u8, value: bool) -> Result<(), Mpu6050Error<E>> {
-        self.write_bits(reg, bit, 1, value as u8)
-    }
 }
 
-#[derive(Debug, uDebug)]
+#[derive(Debug)]
 pub enum Mpu6050Error<T> {
     I2c(T),
     InvalidChipId(u8),
+    NoAck,
 }
 
-impl<E> From<E> for Mpu6050Error<E> {
-    fn from(e: E) -> Self {
-        Mpu6050Error::I2c(e)
+impl<E> From<I2cWrapperError<E>> for Mpu6050Error<E> {
+    fn from(e: I2cWrapperError<E>) -> Self {
+        match e {
+            I2cWrapperError::I2c(x) => Mpu6050Error::I2c(x),
+            I2cWrapperError::InvalidChipId(x) => Mpu6050Error::InvalidChipId(x)
+        }
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, uDebug)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum AccelRange {
     G2 = 0,
     G4 = 1,
@@ -373,7 +327,7 @@ impl AccelRange {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone, uDebug)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub enum GyroRange {
     D250 = 0,
     D500 = 1,

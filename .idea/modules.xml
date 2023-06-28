@@ -2,8 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/adafruit1893_driver/adafruit1893_driver.iml" filepath="$PROJECT_DIR$/adafruit1893_driver/adafruit1893_driver.iml" />
+      <module fileurl="file://$PROJECT_DIR$/i2c_tools/i2c_tools.iml" filepath="$PROJECT_DIR$/i2c_tools/i2c_tools.iml" />
       <module fileurl="file://$PROJECT_DIR$/motor_driver/motor_driver.iml" filepath="$PROJECT_DIR$/motor_driver/motor_driver.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/rc-plane.iml" filepath="$PROJECT_DIR$/.idea/rc-plane.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/rc-drone.iml" filepath="$PROJECT_DIR$/.idea/rc-drone.iml" />
     </modules>
   </component>
 </project>

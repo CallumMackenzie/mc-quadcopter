@@ -3,6 +3,14 @@
 version = 3
 
 [[package]]
+name = "adafruit1893_driver"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal",
+ "i2c_tools",
+]
+
+[[package]]
 name = "arrayvec"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -134,6 +142,7 @@ dependencies = [
 name = "drone"
 version = "0.1.0"
 dependencies = [
+ "adafruit1893_driver",
  "cortex-m",
  "cortex-m-rt",
  "defmt",
@@ -150,7 +159,7 @@ dependencies = [
  "panic-halt",
  "rp-pico",
  "rp2040-hal",
- "ufmt",
+ "ufmt 0.1.0",
  "usb-device",
  "usbd-hid",
  "usbd-serial",
@@ -167,7 +176,7 @@ name = "elinalgebra"
 version = "0.1.0"
 dependencies = [
  "micromath",
- "ufmt",
+ "ufmt 0.1.0",
 ]
 
 [[package]]
@@ -221,6 +230,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d758ba1b47b00caf47f24925c0074ecb20d6dfcffe7f6d53395c0465674841a"
 
 [[package]]
+name = "i2c_tools"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal",
+ "ufmt 0.2.0",
+]
+
+[[package]]
 name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -257,8 +274,8 @@ version = "0.1.0"
 dependencies = [
  "elinalgebra",
  "embedded-hal",
+ "i2c_tools",
  "micromath",
- "ufmt",
 ]
 
 [[package]]
@@ -535,7 +552,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2e7ecea7ef79d3f8f878eee614afdf5256475c63ad76139d4da6125617c784a0"
 dependencies = [
  "proc-macro-hack",
- "ufmt-macros",
+ "ufmt-macros 0.1.1",
+ "ufmt-write",
+]
+
+[[package]]
+name = "ufmt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a64846ec02b57e9108d6469d98d1648782ad6bb150a95a9baac26900bbeab9d"
+dependencies = [
+ "ufmt-macros 0.3.0",
  "ufmt-write",
 ]
 
@@ -546,6 +573,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed813e34a2bfa9dc58ee2ed8c8314d25e6d70c911486d64b8085cb695cfac069"
 dependencies = [
  "proc-macro-hack",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "ufmt-macros"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d337d3be617449165cb4633c8dece429afd83f84051024079f97ad32a9663716"
+dependencies = [
  "proc-macro2",
  "quote",
  "syn",

@@ -1,0 +1,8 @@
+[package]
+name = "adafruit1893_driver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+embedded-hal = "0.2.3"
+i2c_tools = { path = "../i2c_tools" }

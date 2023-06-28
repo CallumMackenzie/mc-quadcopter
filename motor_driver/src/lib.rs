@@ -1,23 +1,30 @@
 #![no_std]
 
+extern crate alloc;
+
+use alloc::boxed::Box;
+
 use cortex_m::delay::Delay;
 use cortex_m::prelude::*;
 use embedded_hal::digital::v2::{OutputPin, ToggleableOutputPin};
 use rp2040_hal::gpio::{Pin, PinId, PinMode, PushPullOutput, ValidPinMode};
 use rp2040_hal::gpio::bank0::BankPinId;
-use rp2040_hal::pwm::{A, B, Channel, ChannelId, SliceId, SliceMode, ValidPwmOutputPin, ValidSliceMode};
+use rp2040_hal::pwm::{
+    A, B, Channel, ChannelId, SliceId, SliceMode, ValidPwmOutputPin, ValidSliceMode,
+};
 
 /// A motor with a given PWM channel
-pub struct Motor<'a, S, M, C>
-    where S: SliceId,
-          M: SliceMode + ValidSliceMode<S>,
-          C: ChannelId
+pub struct Motor<S, M, C>
+    where
+        S: SliceId,
+        M: SliceMode + ValidSliceMode<S>,
+        C: ChannelId,
 {
-    channel: &'a mut Channel<S, M, C>,
+    channel: Channel<S, M, C>,
     initialized: bool,
     duty_range: (u16, u16),
+    thrust_pct: f32,
 }
-
 
 /// A trait representing a motor which has been setup with its channel
 /// and pin.
@@ -29,18 +36,22 @@ pub trait SetupMotor {
     fn is_initialized(&self) -> bool;
     /// EFFECTS: Marks this motor as initialized
     fn mark_initialized(&mut self);
+    /// EFFECTS: Returns thrust percentage
+    fn get_thrust_pct(&mut self) -> f32;
 }
 
-impl<'a, S, M> Motor<'a, S, M, A>
-    where S: SliceId,
-          M: SliceMode + ValidSliceMode<S>
+impl<S, M> Motor<S, M, A>
+    where
+        S: SliceId,
+        M: SliceMode + ValidSliceMode<S>,
 {
     /// REQUIRES: Output is a valid pin for the given channel
     /// EFFECTS: Sets the channel output and returns a motor struct wrapper
-    pub fn new_a<P, PM>(channel: &'a mut Channel<S, M, A>,
-                        div_int: u8,
-                        output: Pin<P, PM>)
-                        -> Motor<'a, S, M, A>
+    pub fn new_a<P, PM>(
+        mut channel: Channel<S, M, A>,
+        div_int: u8,
+        output: Pin<P, PM>,
+    ) -> Motor<S, M, A>
         where
             P: PinId + BankPinId + ValidPwmOutputPin<S, A>,
             PM: PinMode + ValidPinMode<P>,
@@ -51,20 +62,23 @@ impl<'a, S, M> Motor<'a, S, M, A>
             channel,
             initialized: false,
             duty_range: ((duty_per_ms * 0.5) as u16, (duty_per_ms * 2.0) as u16),
+            thrust_pct: 0.0,
         }
     }
 }
 
-impl<'a, S, M> Motor<'a, S, M, B>
-    where S: SliceId,
-          M: SliceMode + ValidSliceMode<S>
+impl<S, M> Motor<S, M, B>
+    where
+        S: SliceId,
+        M: SliceMode + ValidSliceMode<S>,
 {
     /// REQUIRES: Output is a valid pin for the given channel
     /// EFFECTS: Sets the channel output and returns a motor struct wrapper
-    pub fn new_b<P, PM>(channel: &'a mut Channel<S, M, B>,
-                        div_int: u8,
-                        output: Pin<P, PM>)
-                        -> Motor<'a, S, M, B>
+    pub fn new_b<P, PM>(
+        mut channel: Channel<S, M, B>,
+        div_int: u8,
+        output: Pin<P, PM>,
+    ) -> Motor<S, M, B>
         where
             P: PinId + BankPinId + ValidPwmOutputPin<S, B>,
             PM: PinMode + ValidPinMode<P>,
@@ -75,18 +89,25 @@ impl<'a, S, M> Motor<'a, S, M, B>
             channel,
             initialized: false,
             duty_range: ((duty_per_ms * 0.5) as u16, (duty_per_ms * 2.0) as u16),
+            thrust_pct: 0.0,
         }
     }
 }
 
-impl<'a, S, M> SetupMotor for Motor<'a, S, M, A>
-    where S: SliceId,
-          M: SliceMode + ValidSliceMode<S>,
+impl<S, M> SetupMotor for Motor<S, M, A>
+    where
+        S: SliceId,
+        M: SliceMode + ValidSliceMode<S>,
 {
     fn set_thrust_pct(&mut self, pct: f32) {
-        let duty = ((self.duty_range.1 - self.duty_range.0) as f32 * pct)
-            as u16 + self.duty_range.0;
+        let duty =
+            ((self.duty_range.1 - self.duty_range.0) as f32 * pct) as u16 + self.duty_range.0;
         self.channel.set_duty(duty);
+        self.thrust_pct = pct;
+    }
+
+    fn get_thrust_pct(&mut self) -> f32 {
+        return self.thrust_pct;
     }
 
     fn is_initialized(&self) -> bool {
@@ -98,14 +119,19 @@ impl<'a, S, M> SetupMotor for Motor<'a, S, M, A>
     }
 }
 
-impl<'a, S, M> SetupMotor for Motor<'a, S, M, B>
-    where S: SliceId,
-          M: SliceMode + ValidSliceMode<S>,
+impl<S, M> SetupMotor for Motor<S, M, B>
+    where
+        S: SliceId,
+        M: SliceMode + ValidSliceMode<S>,
 {
     fn set_thrust_pct(&mut self, pct: f32) {
-        let duty = ((self.duty_range.1 - self.duty_range.0) as f32 * pct)
-            as u16 + self.duty_range.0;
+        let duty =
+            ((self.duty_range.1 - self.duty_range.0) as f32 * pct) as u16 + self.duty_range.0;
         self.channel.set_duty(duty);
+    }
+
+    fn get_thrust_pct(&mut self) -> f32 {
+        return self.thrust_pct;
     }
 
     fn is_initialized(&self) -> bool {
@@ -117,14 +143,26 @@ impl<'a, S, M> SetupMotor for Motor<'a, S, M, B>
     }
 }
 
-pub struct MotorManager<'a> {
-    pub motors: &'a mut [&'a mut dyn SetupMotor],
+pub struct MotorManager {
+    motors: [Box<dyn SetupMotor>; 4],
 }
 
-impl<'a> MotorManager<'a> {
-    pub fn setup<I: PinId>(&mut self,
-                           indicator_led: &mut Pin<I, PushPullOutput>,
-                           delay: &mut Delay) -> Result<(), MotorError> {
+impl MotorManager {
+    pub fn new(motors: [Box<dyn SetupMotor>; 4]) -> Self {
+        Self { motors }
+    }
+
+    pub fn m0(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[0] }
+    pub fn m1(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[1] }
+    pub fn m2(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[2] }
+    pub fn m3(&mut self) -> &mut Box<dyn SetupMotor> { &mut self.motors[3] }
+
+    pub fn setup<I: PinId>(
+        &mut self,
+        indicator_led: &mut Pin<I, PushPullOutput>,
+        delay: &mut Delay,
+    ) -> Result<(), MotorError> {
+        delay.delay_ms(100);
         for motor in self.motors.iter_mut() {
             if motor.is_initialized() {
                 return Err(MotorError::AlreadyInitialized);
@@ -157,6 +195,10 @@ impl<'a> MotorManager<'a> {
         }
     }
 
+    pub fn turn_all_off(&mut self) {
+        self.set_all_thrust_pct(0.0);
+    }
+
     pub fn get_motor_count(&self) -> usize {
         self.motors.len()
     }
@@ -164,5 +206,5 @@ impl<'a> MotorManager<'a> {
 
 #[derive(Debug, Copy, Clone)]
 pub enum MotorError {
-    AlreadyInitialized
+    AlreadyInitialized,
 }

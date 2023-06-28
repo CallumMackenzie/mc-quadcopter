@@ -76,6 +76,7 @@ pub struct WHO_AM_I;
 
 impl WHO_AM_I {
     pub const ADDR: u8 = 0x75;
+    pub const EXP_RESULT: u8 = MPU_ADDR;
     pub const WHO_AM_I_BITS: BitBlock = BitBlock { start: 0, len: 8 };
 }
 
